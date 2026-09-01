@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "micro-c-app", "micro-c-app\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "micro-c-lib", "micro-c-lib\micro-c-lib\micro-c-lib.csproj", "{C5D2771D-B83B-48AD-8341-C4A8E5351DAA}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "micro-c-app-maui", "micro-c-app-maui\micro-c-app-maui.csproj", "{D15659CE-F12D-45B8-A217-2418ED6D3518}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -159,6 +161,10 @@ Global
 		{C5D2771D-B83B-48AD-8341-C4A8E5351DAA}.Release|x64.Build.0 = Release|Any CPU
 		{C5D2771D-B83B-48AD-8341-C4A8E5351DAA}.Release|x86.ActiveCfg = Release|Any CPU
 		{C5D2771D-B83B-48AD-8341-C4A8E5351DAA}.Release|x86.Build.0 = Release|Any CPU
+		{D15659CE-F12D-45B8-A217-2418ED6D3518}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D15659CE-F12D-45B8-A217-2418ED6D3518}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D15659CE-F12D-45B8-A217-2418ED6D3518}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D15659CE-F12D-45B8-A217-2418ED6D3518}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
