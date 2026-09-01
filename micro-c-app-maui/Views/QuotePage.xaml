@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:micro_c_app_maui.ViewModels"
+             xmlns:views="clr-namespace:micro_c_app_maui.Views"
+             x:Class="micro_c_app_maui.Views.QuotePage"
+             Title="{Binding Title}"
+             x:Name="page">
+
+    <ContentPage.BindingContext>
+        <vm:QuotePageViewModel />
+    </ContentPage.BindingContext>
+
+    <Grid RowDefinitions="*,Auto,Auto,Auto" Padding="10">
+        <CollectionView Grid.Row="0" ItemsSource="{Binding Items}">
+            <CollectionView.EmptyView>
+                <Label Text="Search or scan an item below to add it to the quote." HorizontalOptions="Center" VerticalOptions="Center" />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnDefinitions="6*,Auto,2*,Auto" Padding="0,8">
+                        <VerticalStackLayout Grid.Column="0" VerticalOptions="Center">
+                            <Label Text="{Binding Item.Name}" MaxLines="2" LineBreakMode="TailTruncation" />
+                            <Label Text="{Binding Item.SKU, StringFormat='SKU {0}'}" FontSize="Small" Opacity="0.7" />
+                        </VerticalStackLayout>
+                        <HorizontalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                            <Button Text="-" WidthRequest="36"
+                                    Command="{Binding BindingContext.DecreaseQuantity, Source={x:Reference page}}" CommandParameter="{Binding}" />
+                            <Label Text="{Binding Item.Quantity}" WidthRequest="24" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                            <Button Text="+" WidthRequest="36"
+                                    Command="{Binding BindingContext.IncreaseQuantity, Source={x:Reference page}}" CommandParameter="{Binding}" />
+                        </HorizontalStackLayout>
+                        <Label Grid.Column="2" Text="{Binding Item.Price, StringFormat='${0:0.00}'}" VerticalTextAlignment="Center" HorizontalTextAlignment="End" />
+                        <Button Grid.Column="3" Text="&#xf2ed;" FontFamily="FontAwesomeSolid" WidthRequest="44"
+                                Command="{Binding BindingContext.RemoveItem, Source={x:Reference page}}" CommandParameter="{Binding}" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,*" Margin="0,8">
+            <Label Grid.Column="0" Text="{Binding TotalUnits, StringFormat='{0} item(s)'}" />
+            <VerticalStackLayout Grid.Column="1" HorizontalOptions="End">
+                <Label Text="{Binding Subtotal, StringFormat='Subtotal: ${0:0.00}'}" HorizontalTextAlignment="End" />
+                <Label Text="{Binding TaxedTotal, StringFormat='Total (w/ tax): ${0:0.00}'}" FontAttributes="Bold" HorizontalTextAlignment="End" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <Button Grid.Row="2" Text="Clear Quote" Command="{Binding Reset}" Margin="0,0,0,8" HorizontalOptions="Start" />
+
+        <views:SearchView Grid.Row="3" x:Name="searchView" />
+    </Grid>
+</ContentPage>

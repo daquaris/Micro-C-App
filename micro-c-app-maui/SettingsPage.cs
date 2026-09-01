@@ -15,6 +15,7 @@ namespace micro_c_app_maui
     public static class SettingsPage
     {
         public const string PREF_SELECTED_STORE = "selected_store";
+        public const string PREF_TAX_RATE = "tax_rate";
         public const string PREF_THEME = "theme";
         public const string PREF_VIBRATE = "vibarte";
         public const string PREF_ANALYTICS_ENABLED = "analytics_enabled";
@@ -25,6 +26,8 @@ namespace micro_c_app_maui
         public const string SETTINGS_UPDATED_MESSAGE = "updated";
 
         public static string StoreID() => Preferences.Get(PREF_SELECTED_STORE, "141");
+        public static float TaxRate() => Preferences.Get(PREF_TAX_RATE, 7.5f);
+        public static float TaxRateFactor() => (TaxRate() * .01f) + 1;
         public static AppTheme Theme() => (AppTheme)Preferences.Get(PREF_THEME, 0);
         public static bool Vibrate() => Preferences.Get(PREF_VIBRATE, true);
         public static bool AnalyticsEnabled() => Preferences.Get(PREF_ANALYTICS_ENABLED, false);
