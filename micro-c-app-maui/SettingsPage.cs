@@ -71,7 +71,7 @@ namespace micro_c_app_maui
             yield return new ComponentTypeInfo(BuildService, "");
             yield return new ComponentTypeInfo(ComponentType.OperatingSystem, "");
             yield return new ComponentTypeInfo(CPU, "");
-            yield return new ComponentTypeInfo(Motherboard);
+            yield return new ComponentTypeInfo(Motherboard, "");
             yield return new ComponentTypeInfo(RAM, "");
             yield return new ComponentTypeInfo(Case, "");
             yield return new ComponentTypeInfo(PowerSupply, "");
