@@ -12,6 +12,14 @@
     </ContentPage.BindingContext>
 
     <Grid RowDefinitions="Auto,*,Auto" Padding="10">
+        <Frame Grid.Row="0" IsVisible="{Binding HintVisible}" BorderColor="DarkGray" BackgroundColor="#33808080" Padding="10" Margin="0,0,0,5">
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Grid.Column="0" Text="{Binding HintText}" LineBreakMode="WordWrap" VerticalOptions="Center" />
+                <Button Grid.Column="1" Text="&#xf00d;" FontFamily="FontAwesomeSolid" WidthRequest="44"
+                        Command="{Binding DismissHint}" />
+            </Grid>
+        </Frame>
+
         <ScrollView Grid.Row="1" IsVisible="{Binding Item, Converter={StaticResource NullBoolConverter}}">
             <VerticalStackLayout Spacing="6">
                 <Label Text="{Binding Item.Name}" FontSize="Title" />
@@ -30,8 +38,10 @@
                HorizontalOptions="Center" VerticalOptions="Center" />
 
         <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*" ColumnSpacing="4">
-            <Button Grid.Column="0" Text="Home" Command="{Binding PopAll}" />
-            <Button Grid.Column="1" Text="Back" Command="{Binding PopItem}" />
+            <Button Grid.Column="0" Text="&#xf015;" FontFamily="FontAwesomeSolid" WidthRequest="50"
+                    Command="{Binding PopAll}" />
+            <Button Grid.Column="1" Text="&#xf060;" FontFamily="FontAwesomeSolid" WidthRequest="50"
+                    Command="{Binding PopItem}" />
             <views:SearchView Grid.Column="2" x:Name="searchView" />
         </Grid>
     </Grid>

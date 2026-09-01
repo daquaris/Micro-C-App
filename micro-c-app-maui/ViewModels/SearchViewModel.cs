@@ -8,9 +8,9 @@ using static MicroCLib.Models.BuildComponent;
 namespace micro_c_app_maui.ViewModels
 {
     // Ported from the classic app's ViewModels/SearchViewModel.cs, trimmed for the phase-1 vertical
-    // slice: Reminders integration, the location-tracker OnProductLocationFound path, the tip/hint
-    // rotation (HelpMessages), and the long-press action sheet are all out of scope until those
-    // features get ported too.
+    // slice: Reminders integration, the location-tracker OnProductLocationFound path, quick-search
+    // category browsing (needs SearchResultsPage, not ported yet), and the long-press action sheet
+    // are all out of scope until those features get ported too.
     public class SearchViewModel : BaseViewModel
     {
         private Item item;
@@ -105,8 +105,8 @@ namespace micro_c_app_maui.ViewModels
 
         private void SetupHint()
         {
-            HintText = "";
-            HintVisible = false;
+            HintText = HelpMessages.GetNextMessage() ?? "";
+            HintVisible = !string.IsNullOrWhiteSpace(HintText) && Item == null;
         }
 
         private void UpdateProperties()
