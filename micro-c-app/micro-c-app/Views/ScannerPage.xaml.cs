@@ -58,26 +58,28 @@ namespace micro_c_app.Views
 
             //Methods.SetIsBarcodeScanning(true);
 
-            scanner2.OnDetected += (sender, args) =>
+            scanner2.OnScanResult += (zxingResult) =>
             {
-                switch (CurrentScanMode)
+                Device.BeginInvokeOnMainThread(() =>
                 {
-                    case ScanMode.Item:
-                        OnScanResult?.Invoke(args.BarcodeResults.FirstOrDefault());
-                        break;
-                    case ScanMode.Serial:
-                        var result = args.BarcodeResults.FirstOrDefault();
-                        if (result != null && !string.IsNullOrWhiteSpace(result.DisplayValue))
-                        {
-                            var success = TryAddSerial(result.DisplayValue);
-                            if (success && SettingsPage.Vibrate())
+                    var result = new BarcodeResult { DisplayValue = zxingResult?.Text };
+                    switch (CurrentScanMode)
+                    {
+                        case ScanMode.Item:
+                            OnScanResult?.Invoke(result);
+                            break;
+                        case ScanMode.Serial:
+                            if (!string.IsNullOrWhiteSpace(result.DisplayValue))
                             {
-                                Xamarin.Essentials.Vibration.Vibrate(); 
+                                var success = TryAddSerial(result.DisplayValue);
+                                if (success && SettingsPage.Vibrate())
+                                {
+                                    Xamarin.Essentials.Vibration.Vibrate();
+                                }
                             }
-                        }
-                        break;
-                }
-                //Device.StartTimer(TimeSpan.FromSeconds(1), () => { Methods.SetIsBarcodeScanning(true); return false; });
+                            break;
+                    }
+                });
             };
             IsRunningTask = false;
             PropertyChanged += ScannerPage_PropertyChanged;
@@ -87,11 +89,9 @@ namespace micro_c_app.Views
 
         protected override void OnAppearing()
         {
-            scanner2.RequestedFPS = 30;
-            //BarcodeScanner.Mobile.Methods.SetIsBarcodeScanning(true);
-            scanner2.IsEnabled = true;
-            BarcodeScanner.Mobile.Methods.SetSupportBarcodeFormat(BarcodeScanner.Mobile.BarcodeFormats.All);
-        }        
+            scanner2.IsScanning = true;
+            scanner2.IsAnalyzing = true;
+        }
 
         public static async Task ScanSerial(Action<string> callback)
         {
@@ -139,8 +139,7 @@ namespace micro_c_app.Views
         {
             if (e.PropertyName == nameof(IsRunningTask))
             {
-                scanner2.IsEnabled = !IsRunningTask;
-                //scanner.IsScanning = !IsRunningTask;
+                scanner2.IsAnalyzing = !IsRunningTask;
             }
         }
 
@@ -158,6 +157,12 @@ namespace micro_c_app.Views
             var result = await DisplayPromptAsync("Serial Number", "Enter a serial number.");
             TryAddSerial(result);
             //Methods.SetIsBarcodeScanning(true);
+        }
+
+        private void TorchClicked(object sender, EventArgs e)
+        {
+            scanner2.IsTorchOn = !scanner2.IsTorchOn;
+            torchButton.TextColor = scanner2.IsTorchOn ? Color.Yellow : (Color)Application.Current.Resources["ButtonTextColor"];
         }
 
         private void SerialClicked(object sender, EventArgs e)

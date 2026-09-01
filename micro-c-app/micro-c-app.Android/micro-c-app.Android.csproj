@@ -17,7 +17,7 @@
     <MonoAndroidResourcePrefix>Resources</MonoAndroidResourcePrefix>
     <MonoAndroidAssetsPrefix>Assets</MonoAndroidAssetsPrefix>
     <AndroidUseLatestPlatformSdk>false</AndroidUseLatestPlatformSdk>
-    <TargetFrameworkVersion>v10.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v13.0</TargetFrameworkVersion>
     <AndroidEnableSGenConcurrent>true</AndroidEnableSGenConcurrent>
     <AndroidUseAapt2>true</AndroidUseAapt2>
     <AndroidHttpClientHandlerType>Xamarin.Android.Net.AndroidClientHandler</AndroidHttpClientHandlerType>
@@ -70,9 +70,6 @@
   <ItemGroup>
     <PackageReference Include="BarcodeScanner.Mobile.XamarinForms">
       <Version>6.4.0.2</Version>
-    </PackageReference>
-    <PackageReference Include="micro-c-lib">
-      <Version>1.0.40</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.AppCenter.Analytics">
       <Version>5.0.5</Version>
@@ -138,6 +135,8 @@
       <Project>{B6F5AB82-48A5-44DB-8D3C-4E4E4727D8E9}</Project>
       <Name>micro-c-app</Name>
     </ProjectReference>
+    <!-- Vendored/patched fork of the micro-c-lib NuGet package - see micro-c-app.csproj for details. -->
+    <ProjectReference Include="..\..\micro-c-lib\micro-c-lib\micro-c-lib.csproj" />
   </ItemGroup>
   <ItemGroup>
     <AndroidResource Include="Resources\drawable-hdpi\ic_shortcut_mc.png" />

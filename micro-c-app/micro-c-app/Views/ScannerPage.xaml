@@ -9,8 +9,8 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            <!--<zxing:ZXingScannerView Grid.Row="0" x:Name="scanner"/>-->
-            <gv:CameraView x:Name="scanner2" Grid.Row="0" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand" VibrationOnDetected="False"  RequestedFPS="30"/>
+            <zxing:ZXingScannerView x:Name="scanner2" Grid.Row="0" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand" IsScanning="True" IsAnalyzing="True"/>
+            <Button x:Name="torchButton" Grid.Row="0" Text="&#xf0e7;" FontFamily="{StaticResource FontAwesomeSolid}" HorizontalOptions="End" VerticalOptions="Start" Margin="20" WidthRequest="50" HeightRequest="50" CornerRadius="25" Opacity=".75" BackgroundColor="{DynamicResource NavigationBarColor}" Clicked="TorchClicked"/>
             <Frame Grid.Row="0" HorizontalOptions="FillAndExpand" VerticalOptions="End" Opacity=".75" BackgroundColor="{DynamicResource NavigationBarColor}" Margin="20" IsVisible="{Binding LastItem, Source={Reference root}, Converter={StaticResource NullBoolConverter}}">
                 <Grid>
                     <Grid.ColumnDefinitions>

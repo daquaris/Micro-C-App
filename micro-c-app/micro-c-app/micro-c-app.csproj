@@ -21,7 +21,6 @@
     <PackageReference Include="BarcodeScanner.Mobile.XamarinForms" Version="6.4.0.2" />
     <PackageReference Include="DataFlareClient" Version="1.1.4" />
     <PackageReference Include="FuzzySharp" Version="2.0.2" />
-    <PackageReference Include="micro-c-lib" Version="1.0.40" />
     <PackageReference Include="Microsoft.AppCenter.Analytics" Version="5.0.5" />
     <PackageReference Include="Microsoft.AppCenter.Crashes" Version="5.0.5" />
     <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="2.2.0" />
@@ -32,6 +31,12 @@
     <PackageReference Include="Xamarin.Essentials" Version="1.8.1" />  
     <PackageReference Include="ZXing.Net.Mobile" Version="3.0.0-beta5" />  
     <PackageReference Include="ZXing.Net.Mobile.Forms" Version="3.0.0-beta5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Vendored fork of https://github.com/blaxbb/micro-c-lib with fixes for MicroCenter's search
+         markup changes and an updated store list - replaces the stale 1.0.40 NuGet package. -->
+    <ProjectReference Include="..\..\micro-c-lib\micro-c-lib\micro-c-lib.csproj" />
   </ItemGroup>
 
   <ItemGroup>

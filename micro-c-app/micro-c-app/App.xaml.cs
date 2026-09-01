@@ -74,6 +74,11 @@ namespace micro_c_app
             AnalyticsService.Track("Store ID", SettingsPage.StoreID());
 
             InventoryLandingPage.CheckNotifications();
+
+            // Best-effort refresh of the store list from microcenter.com; Stores.AllStores keeps its
+            // hardcoded fallback values if this fails, so a bad network or a markup change can't break
+            // store selection.
+            _ = Stores.RefreshFromWeb();
         }
 
         protected override void OnSleep()
