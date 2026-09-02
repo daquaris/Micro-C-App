@@ -18,10 +18,12 @@
             </CollectionView.EmptyView>
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Grid ColumnDefinitions="6*,Auto,2*,Auto" Padding="0,8">
+                    <Grid ColumnDefinitions="6*,Auto,2*,Auto,Auto" Padding="0,8">
                         <VerticalStackLayout Grid.Column="0" VerticalOptions="Center">
                             <Label Text="{Binding Item.Name}" MaxLines="2" LineBreakMode="TailTruncation" />
                             <Label Text="{Binding Item.SKU, StringFormat='SKU {0}'}" FontSize="Small" Opacity="0.7" />
+                            <Label Text="{Binding Message}" FontSize="Small" FontAttributes="Italic" Opacity="0.7"
+                                   IsVisible="{Binding HasMessage}" />
                         </VerticalStackLayout>
                         <HorizontalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
                             <Button Text="-" WidthRequest="36"
@@ -31,7 +33,9 @@
                                     Command="{Binding BindingContext.IncreaseQuantity, Source={x:Reference page}}" CommandParameter="{Binding}" />
                         </HorizontalStackLayout>
                         <Label Grid.Column="2" Text="{Binding Item.Price, StringFormat='${0:0.00}'}" VerticalTextAlignment="Center" HorizontalTextAlignment="End" />
-                        <Button Grid.Column="3" Text="&#xf2ed;" FontFamily="FontAwesomeSolid" WidthRequest="44"
+                        <Button Grid.Column="3" Text="&#xf075;" FontFamily="FontAwesomeSolid" WidthRequest="44"
+                                Command="{Binding BindingContext.EditMessage, Source={x:Reference page}}" CommandParameter="{Binding}" />
+                        <Button Grid.Column="4" Text="&#xf2ed;" FontFamily="FontAwesomeSolid" WidthRequest="44"
                                 Command="{Binding BindingContext.RemoveItem, Source={x:Reference page}}" CommandParameter="{Binding}" />
                     </Grid>
                 </DataTemplate>

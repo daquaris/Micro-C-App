@@ -111,6 +111,15 @@ namespace MicroCLib.Models
 
         public ObservableCollection<string> Serials { get => serials; set => SetProperty(ref serials, value); }
 
+        // A free-form note attached to this line item (e.g. "customer wants this shipped separately").
+        // Currently surfaced on the MAUI Quote page (issue #16) - persisted here rather than kept
+        // MAUI-side so it round-trips through BuildComponent's existing JSON serialization for free
+        // (SavedBuild, quote export, etc.) instead of needing a parallel lookup keyed on each item.
+        private string message = "";
+        public string Message { get => message ?? ""; set { SetProperty(ref message, value); OnPropertyChanged(nameof(HasMessage)); } }
+        [JsonIgnore]
+        public bool HasMessage => !string.IsNullOrWhiteSpace(Message);
+
         public BuildComponent()
         {
             Serials = new ObservableCollection<string>();

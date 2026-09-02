@@ -11,6 +11,8 @@ namespace micro_c_app_maui.ViewModels
     // Not ported yet: serial number tracking per item, warranty plan upsells, Send Quote (the
     // dataflare.bbarrett.me sharing link), CSV/TXT export, save/load quote files, and batch scanning.
     // The quote also isn't persisted across app restarts yet (RestoreState wasn't ported).
+    // Line item messages (issue #16) are ported here even though the classic app never had them -
+    // BuildComponent.Message is new (see BuildComponent.cs).
     public class QuotePageViewModel : BaseViewModel
     {
         private ObservableCollection<BuildComponent> items = new ObservableCollection<BuildComponent>();
@@ -21,6 +23,7 @@ namespace micro_c_app_maui.ViewModels
         public ICommand IncreaseQuantity { get; }
         public ICommand DecreaseQuantity { get; }
         public ICommand RemoveItem { get; }
+        public ICommand EditMessage { get; }
         public ICommand Reset { get; }
 
         public float Subtotal => Items.Sum(i => i.Item != null ? i.Item.Price * i.Item.Quantity : 0);
@@ -78,6 +81,20 @@ namespace micro_c_app_maui.ViewModels
                 if (confirmed)
                 {
                     Items.Remove(comp);
+                }
+            });
+
+            EditMessage = new Command<BuildComponent>(async (comp) =>
+            {
+                if (comp?.Item == null || Shell.Current == null)
+                {
+                    return;
+                }
+
+                var result = await Shell.Current.DisplayPromptAsync("Line Item Message", $"Message for {comp.Item.Name}:", initialValue: comp.Message, maxLength: 200);
+                if (result != null)
+                {
+                    comp.Message = result.Trim();
                 }
             });
 
