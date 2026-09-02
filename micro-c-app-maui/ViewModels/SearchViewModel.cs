@@ -100,6 +100,13 @@ namespace micro_c_app_maui.ViewModels
                 SettingsPage.IncrementHelpMessageIndex();
             });
 
+            // TODO: this subscribes for the lifetime of the process with no unsubscribe. Currently
+            // harmless in practice - Shell's ContentTemplate caches SearchPage for the app's session,
+            // so there's only ever one instance - but if that ever changes (e.g. non-cached
+            // navigation), this leaks a SearchViewModel per visit. The correct fix is moving this
+            // into SearchPage's OnAppearing/OnDisappearing rather than the constructor; a naive
+            // one-sided unsubscribe would silently stop Categories from updating after the first tab
+            // switch away, which is worse than the leak.
             SettingsPage.Updated += UpdateProperties;
         }
 

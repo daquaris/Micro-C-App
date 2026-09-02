@@ -25,12 +25,6 @@ namespace MicroCLib.Models
             pricehigh
         }
 
-        static HttpClient newClient() {
-            var client = new HttpClient();
-            client.Timeout = TimeSpan.FromSeconds(15);
-            return client;
-        }
-
         // Same defensive bound as Item.cs's RegexTimeout: a body-wide pattern that stops matching
         // MicroCenter's markup can still backtrack across the whole page rather than failing fast.
         // ParseBody hasn't been observed hanging like Item.ParsePlans did, but the search results
@@ -73,18 +67,11 @@ namespace MicroCLib.Models
 
         public static async Task<SearchResults> LoadQuery(string searchQuery, string storeID, string categoryFilter, OrderByMode orderBy, int page, CancellationToken? token = null, IProgress<ProgressInfo> progress = null)
         {
-            var client = newClient();
-            token?.Register(() =>
-            {
-                client?.CancelPendingRequests();
-            });
+            var client = SharedHttpClient.Instance;
 
             progress?.Report(new ProgressInfo($"Loading query {searchQuery}", .3));
 
             var url = GetSearchUrl(searchQuery, storeID, categoryFilter, orderBy, RESULTS_PER_PAGE, page);
-            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/112.0");
-            client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8");
-            client.DefaultRequestHeaders.Add("Accept-Language", "en-US,en;q=0.5");
             var response = await (token != null ? client.GetAsync(url, token.Value) :  client.GetAsync(url));
             token?.ThrowIfCancellationRequested();
             if (response.StatusCode == System.Net.HttpStatusCode.OK)
@@ -122,7 +109,7 @@ namespace MicroCLib.Models
 
         public static async Task<SearchResults> LoadCategoryFast(BuildComponent.ComponentType type, CancellationToken? token = null)
         {
-            var client = newClient();
+            var client = SharedHttpClient.Instance;
 
             var url = $"https://microc.bbarrett.me/MicroCenterProxy/getCachedCategory/{(int)type}";
             var response = await (token != null ? client.GetAsync(url, token.Value) : client.GetAsync(url));
@@ -138,7 +125,7 @@ namespace MicroCLib.Models
 
         public static async Task<SearchResults> LoadMultipleFast(List<string> skus, CancellationToken? token = null)
         {
-            var client = newClient();
+            var client = SharedHttpClient.Instance;
 
             var url = $"https://microc.bbarrett.me/MicroCenterProxy/getCachedSkus/{string.Join(",", skus)}";
             var response = await (token != null ? client.GetAsync(url, token.Value) : client.GetAsync(url));

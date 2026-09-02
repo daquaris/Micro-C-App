@@ -64,36 +64,26 @@ namespace MicroCLib.Models
                 urlIdStub = urlIdStub.Substring(0, paramIndex);
             }
 
-            using (HttpClient client = new HttpClient())
+            var client = SharedHttpClient.Instance;
+
+            progress?.Report(new ProgressInfo($"Found item, fetching details", .7d));
+
+            var url = $"https://www.microcenter.com{urlIdStub}?storeid={storeId}";
+
+            var response = await (token == null ? client.GetAsync(url) : client.GetAsync(url, token.Value));
+            token?.ThrowIfCancellationRequested();
+
+            if (response.StatusCode != System.Net.HttpStatusCode.OK)
             {
-                client.Timeout = TimeSpan.FromSeconds(15);
-                token?.Register(() =>
-                {
-                    client.CancelPendingRequests();
-                });
-
-                progress?.Report(new ProgressInfo($"Found item, fetching details", .7d));
-
-                var url = $"https://www.microcenter.com{urlIdStub}?storeid={storeId}";
-                client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/112.0");
-                client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8");
-                client.DefaultRequestHeaders.Add("Accept-Language", "en-US,en;q=0.5");
-
-                var response = await (token == null ? client.GetAsync(url) : client.GetAsync(url, token.Value));
-                token?.ThrowIfCancellationRequested();
-
-                if (response.StatusCode != System.Net.HttpStatusCode.OK)
-                {
-                    var respBody = await response.Content.ReadAsStringAsync();
-                    return new Item() { Name = "Product not found", SKU = "000000", Specs = new Dictionary<string, string>() { { "response", respBody } } };
-                }
-
-                progress?.Report(new ProgressInfo($"Parsing item details", .9d));
-
-                var body = await response.Content.ReadAsStringAsync();
-                token?.ThrowIfCancellationRequested();
-                return ParseItem(urlIdStub, body);
+                var respBody = await response.Content.ReadAsStringAsync();
+                return new Item() { Name = "Product not found", SKU = "000000", Specs = new Dictionary<string, string>() { { "response", respBody } } };
             }
+
+            progress?.Report(new ProgressInfo($"Parsing item details", .9d));
+
+            var body = await response.Content.ReadAsStringAsync();
+            token?.ThrowIfCancellationRequested();
+            return ParseItem(urlIdStub, body);
         }
 
         // Split out of FromUrl so tests can exercise the parsing logic against a saved fixture body
