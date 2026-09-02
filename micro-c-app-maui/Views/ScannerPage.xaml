@@ -20,10 +20,13 @@
         <Label x:Name="debugLabel"
                Text="waiting for frames..."
                TextColor="Lime"
-               BackgroundColor="#AA000000"
-               FontSize="12"
-               Padding="8"
+               BackgroundColor="#CC000000"
+               FontSize="16"
+               FontAttributes="Bold"
+               Padding="10"
+               Margin="0,90,0,0"
                HorizontalOptions="Fill"
-               VerticalOptions="End" />
+               HorizontalTextAlignment="Center"
+               VerticalOptions="Start" />
     </Grid>
 </ContentPage>

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using ZXing.Net.Maui;
 
 namespace micro_c_app_maui.Views
@@ -16,6 +17,13 @@ namespace micro_c_app_maui.Views
         // can invoke OnScanResult (and so pop/submit) more than once.
         private bool hasDetected;
 
+        // TEMPORARY diagnostic counters - FrameReady fires on every camera frame regardless of
+        // whether ZXing found a barcode in it, unlike BarcodesDetected (which only fires on a hit).
+        // That makes it the one signal that can tell "camera frames never reach the analyzer" apart
+        // from "frames arrive but nothing ever decodes". Remove alongside debugLabel once fixed.
+        private long frameCount;
+        private DateTime lastLabelUpdate = DateTime.MinValue;
+
         public ScannerPage()
         {
             InitializeComponent();
@@ -30,6 +38,8 @@ namespace micro_c_app_maui.Views
                 TryHarder = true,
                 CameraResolutionSelector = SelectCameraResolution
             };
+
+            scanner.FrameReady += OnFrameReady;
         }
 
         private static CameraResolution SelectCameraResolution(IReadOnlyList<CameraResolution> availableResolutions)
@@ -58,6 +68,27 @@ namespace micro_c_app_maui.Views
             base.OnDisappearing();
         }
 
+        // TEMPORARY diagnostic - fires on every camera frame regardless of detection. If the count
+        // never climbs, frames aren't reaching the analyzer at all (camera/binding problem). If it
+        // climbs steadily but OnBarcodesDetected never fires, frames are being analyzed but nothing
+        // is ever decoding (image-format/decoder problem). Remove alongside debugLabel once fixed.
+        private void OnFrameReady(object sender, ZXing.Net.Maui.CameraFrameBufferEventArgs e)
+        {
+            var count = Interlocked.Increment(ref frameCount);
+
+            var now = DateTime.Now;
+            if ((now - lastLabelUpdate).TotalMilliseconds < 300)
+            {
+                return;
+            }
+            lastLabelUpdate = now;
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                debugLabel.Text = $"frames analyzed: {count} (last {now:T})";
+            });
+        }
+
         private void OnBarcodesDetected(object sender, BarcodeDetectionEventArgs e)
         {
             var count = e.Results?.Length ?? 0;
@@ -68,7 +99,7 @@ namespace micro_c_app_maui.Views
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 debugLabel.Text = count > 0
-                    ? $"detected: {e.Results[0].Format} -> {e.Results[0].Value}"
+                    ? $"DETECTED: {e.Results[0].Format} -> {e.Results[0].Value}"
                     : $"frame analyzed, no barcode ({DateTime.Now:T})";
             });
 
