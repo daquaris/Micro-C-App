@@ -104,9 +104,35 @@ namespace MicroCLib.Models
             // MicroCenter's search endpoint is 1-indexed - page=0 silently returns zero results for every
             // query (SKU, UPC, or text), which made every fast lookup fail regardless of parsing.
             var res = await LoadQuery(search, storeId, null, OrderByMode.match, 1, token);
-            if (res != null && res.TotalResults > 0)
+            if (res == null || res.TotalResults == 0 || res.Items.Count == 0)
             {
-                return await Item.FromUrl(res.Items[0].URL, storeId, token);
+                return null;
+            }
+
+            var item = await Item.FromUrl(res.Items[0].URL, storeId, token);
+
+            // A query with zero *real* matches still renders MicroCenter's "you might like" filler
+            // products using the same markup as a genuine result, and (like a real single-match hit)
+            // that page skips the "Showing X of Y" summary ParseBody otherwise relies on - so
+            // TotalResults alone can't tell a real SKU/UPC match from filler. Confirmed by scanning a
+            // barcode MicroCenter doesn't carry at all (a grocery item) and getting back an unrelated
+            // in-catalog product. Only trust this result if it actually matches what was searched.
+            if (item == null)
+            {
+                return null;
+            }
+
+            if (Regex.IsMatch(search, "^\\d{6}$") && item.SKU == search)
+            {
+                return item;
+            }
+
+            if (Regex.IsMatch(search, "^\\d{12}$")
+                && item.Specs != null
+                && item.Specs.TryGetValue("UPC", out var upc)
+                && Regex.Replace(upc ?? "", "\\D", "") == search)
+            {
+                return item;
             }
 
             return null;
