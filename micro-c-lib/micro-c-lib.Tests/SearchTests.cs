@@ -78,17 +78,24 @@ namespace MicroCLib.Tests
             Assert.IsTrue(allResults.Items.Count == allResults.TotalResults);
         }
 
+        // Same staleness problem as ItemTests originally had (see that class): these were 2020-era
+        // SKU/UPC values for products that are long discontinued, so the search for them fell back
+        // to unrelated filler results instead of resolving to a single match, and LoadFast (which
+        // requires exactly a real, positive TotalResults) returned null instead of an item. Replaced
+        // with the same evergreen store-brand and name-brand USB flash drives used for the Item.cs
+        // fixture - cheap, generic products unlikely to ever go out of stock or get discontinued -
+        // and verified live that each resolves to exactly one search result.
         [TestMethod]
         public async Task LoadFastSKU()
         {
-            var item = await Search.LoadFast("195073", STORE);
+            var item = await Search.LoadFast("482091", STORE);
             Assert.IsTrue(!string.IsNullOrWhiteSpace(item.URL));
         }
 
         [TestMethod]
         public async Task LoadFastUPC()
         {
-            var item = await Search.LoadFast("730143312042", STORE);
+            var item = await Search.LoadFast("023942490715", STORE);
             Assert.IsTrue(!string.IsNullOrWhiteSpace(item.URL));
         }
 

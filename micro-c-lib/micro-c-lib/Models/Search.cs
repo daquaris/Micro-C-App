@@ -56,7 +56,12 @@ namespace MicroCLib.Models
                     break;
                 }
                 result.Items.AddRange(addResult.Items);
-                result.TotalResults = addResult.TotalResults;
+                // A parsed TotalResults lower than what's actually been collected is never
+                // trustworthy (e.g. ParseBody's "of <tag>N</tag>" summary regex failing to match a
+                // markup change) - force at least one more page rather than silently truncating
+                // pagination. The "page came back empty" check above is still what actually stops
+                // the loop once results are genuinely exhausted.
+                result.TotalResults = System.Math.Max(addResult.TotalResults, result.Items.Count + 1);
                 page++;
             }
 
@@ -165,7 +170,12 @@ namespace MicroCLib.Models
                 // a real match from filler). But a query that matches exactly one product (e.g. a SKU/UPC fast
                 // lookup) skips the summary block entirely, so its absence isn't itself a signal of zero results.
                 //
-                var match = Regex.Match(body, "of\\s*<strong>\\s*(\\d+)\\s*</strong>", RegexOptions.None, RegexTimeout);
+                // Any single wrapping tag, not specifically <strong> - MicroCenter swapping the tag
+                // used to highlight the count (e.g. to <b> or <span>) shouldn't drop this to the
+                // filler-query fallback below. (LoadAll no longer trusts a too-low TotalResults
+                // blindly either way, but this keeps the value itself accurate for anything that
+                // reads TotalResults directly - the tests, a "Showing X of Y" UI, etc.)
+                var match = Regex.Match(body, "of\\s*<[^>]+>\\s*(\\d+)\\s*</[^>]+>", RegexOptions.None, RegexTimeout);
                 if (match.Success)
                 {
                     if (int.TryParse(match.Groups[1].Value, out int totalResults))
