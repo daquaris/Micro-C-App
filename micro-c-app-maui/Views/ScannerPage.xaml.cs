@@ -17,12 +17,16 @@ namespace micro_c_app_maui.Views
         // can invoke OnScanResult (and so pop/submit) more than once.
         private bool hasDetected;
 
-        // TEMPORARY diagnostic counters - FrameReady fires on every camera frame regardless of
+        // TEMPORARY diagnostic counter - FrameReady fires on every camera frame regardless of
         // whether ZXing found a barcode in it, unlike BarcodesDetected (which only fires on a hit).
         // That makes it the one signal that can tell "camera frames never reach the analyzer" apart
         // from "frames arrive but nothing ever decodes". Remove alongside debugLabel once fixed.
         private long frameCount;
-        private DateTime lastLabelUpdate = DateTime.MinValue;
+
+        // TEMPORARY - polls CrashLog on a timer (rather than only on FrameReady/BarcodesDetected)
+        // so the label keeps updating even in the exact failure case we're chasing: camera reopen
+        // that silently stops producing frames. Remove alongside CrashLog/debugLabel once fixed.
+        private IDispatcherTimer diagnosticTimer;
 
         public ScannerPage()
         {
@@ -59,49 +63,50 @@ namespace micro_c_app_maui.Views
         {
             base.OnAppearing();
             scanner.IsDetecting = true;
+
+            CrashLog.Write("ScannerPage appearing - opening camera");
+
+            diagnosticTimer = Dispatcher.CreateTimer();
+            diagnosticTimer.Interval = TimeSpan.FromSeconds(1);
+            diagnosticTimer.Tick += (s, e) => RefreshDiagnosticLabel();
+            diagnosticTimer.Start();
         }
 
         protected override void OnDisappearing()
         {
+            CrashLog.Write($"ScannerPage disappearing - frames analyzed this session: {Interlocked.Read(ref frameCount)}");
+
             scanner.IsDetecting = false;
             scanner.IsTorchOn = false;
+
+            diagnosticTimer?.Stop();
+            diagnosticTimer = null;
+
             base.OnDisappearing();
+        }
+
+        private void RefreshDiagnosticLabel()
+        {
+            var frames = Interlocked.Read(ref frameCount);
+            debugLabel.Text = $"frames analyzed: {frames}{Environment.NewLine}{CrashLog.ReadLast(4)}";
         }
 
         // TEMPORARY diagnostic - fires on every camera frame regardless of detection. If the count
         // never climbs, frames aren't reaching the analyzer at all (camera/binding problem). If it
         // climbs steadily but OnBarcodesDetected never fires, frames are being analyzed but nothing
-        // is ever decoding (image-format/decoder problem). Remove alongside debugLabel once fixed.
+        // is ever decoding (image-format/decoder problem). The label itself is refreshed by
+        // diagnosticTimer, not here, so it keeps updating even if frames stop entirely.
         private void OnFrameReady(object sender, ZXing.Net.Maui.CameraFrameBufferEventArgs e)
-        {
-            var count = Interlocked.Increment(ref frameCount);
-
-            var now = DateTime.Now;
-            if ((now - lastLabelUpdate).TotalMilliseconds < 300)
-            {
-                return;
-            }
-            lastLabelUpdate = now;
-
-            MainThread.BeginInvokeOnMainThread(() =>
-            {
-                debugLabel.Text = $"frames analyzed: {count} (last {now:T})";
-            });
-        }
+            => Interlocked.Increment(ref frameCount);
 
         private void OnBarcodesDetected(object sender, BarcodeDetectionEventArgs e)
         {
             var count = e.Results?.Length ?? 0;
 
-            // TEMPORARY diagnostic - proves whether ZXing is decoding frames at all vs. failing
-            // somewhere after. Remove this dispatch + the XAML label once scanning is confirmed
-            // working on-device.
-            MainThread.BeginInvokeOnMainThread(() =>
+            if (count > 0)
             {
-                debugLabel.Text = count > 0
-                    ? $"DETECTED: {e.Results[0].Format} -> {e.Results[0].Value}"
-                    : $"frame analyzed, no barcode ({DateTime.Now:T})";
-            });
+                CrashLog.Write($"BarcodesDetected: {e.Results[0].Format} -> {e.Results[0].Value}");
+            }
 
             if (hasDetected)
             {
