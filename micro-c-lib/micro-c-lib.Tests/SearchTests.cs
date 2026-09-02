@@ -81,21 +81,21 @@ namespace MicroCLib.Tests
         [TestMethod]
         public async Task LoadFastSKU()
         {
-            var item = await Search.LoadFast("195073");
+            var item = await Search.LoadFast("195073", STORE);
             Assert.IsTrue(!string.IsNullOrWhiteSpace(item.URL));
         }
 
         [TestMethod]
         public async Task LoadFastUPC()
         {
-            var item = await Search.LoadFast("730143312042");
+            var item = await Search.LoadFast("730143312042", STORE);
             Assert.IsTrue(!string.IsNullOrWhiteSpace(item.URL));
         }
 
         [TestMethod]
         public async Task LoadFastFail()
         {
-            var item = await Search.LoadFast("garbage");
+            var item = await Search.LoadFast("garbage", STORE);
             Assert.IsNull(item);
         }
 

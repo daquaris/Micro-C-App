@@ -31,6 +31,12 @@ namespace MicroCLib.Models
             return client;
         }
 
+        // Same defensive bound as Item.cs's RegexTimeout: a body-wide pattern that stops matching
+        // MicroCenter's markup can still backtrack across the whole page rather than failing fast.
+        // ParseBody hasn't been observed hanging like Item.ParsePlans did, but the search results
+        // page is the same kind of ~500KB+ HTML this failure mode needs to happen on.
+        private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(2);
+
         
         public static string GetSearchUrl(string query, string storeId, string categoryFilter, OrderByMode orderBy, int resultsPerPage, int page)
         {
@@ -99,54 +105,16 @@ namespace MicroCLib.Models
         public static async Task<SearchResults> LoadEnhanced(string searchQuery, string storeID, string categoryFilter, CancellationToken? token = null)
         {
             return await LoadAll(searchQuery, storeID, categoryFilter, OrderByMode.match, token);
-
-            Dictionary<string, string> query = new Dictionary<string, string>()
-            {
-                {"query", searchQuery},
-                {"storeId", storeID },
-                {"categoryFilter", categoryFilter },
-                {"orderBy", "0"},
-                {"page", "0" }
-            };
-
-            var client = newClient();
-
-            string queryString = string.Join("&", query.Select((x) => x.Key + "=" + x.Value?.ToString()));
-            var url = $"https://microc.bbarrett.me/MicroCenterProxy/searchAll?{queryString}";
-            var response = await (token != null ? client.GetAsync(url, token.Value) : client.GetAsync(url));
-            if (response.IsSuccessStatusCode)
-            {
-                var body = await response.Content.ReadAsStringAsync();
-                var result = JsonConvert.DeserializeObject<SearchResults>(body);
-                return result;
-            }
-
-            return new SearchResults();
         }
 
-        public static async Task<Item> LoadFast(string search, CancellationToken? token = null)
+        public static async Task<Item> LoadFast(string search, string storeId, CancellationToken? token = null)
         {
             // MicroCenter's search endpoint is 1-indexed - page=0 silently returns zero results for every
             // query (SKU, UPC, or text), which made every fast lookup fail regardless of parsing.
-            var res = await LoadQuery(search, "141", null, OrderByMode.match, 1, token);
-            if(res != null && res.TotalResults > 0)
+            var res = await LoadQuery(search, storeId, null, OrderByMode.match, 1, token);
+            if (res != null && res.TotalResults > 0)
             {
-                return await Item.FromUrl(res.Items[0].URL, "141", token);
-            }
-            else
-            {
-                return null;
-            }
-
-            var client = newClient();
-
-            var url = $"https://microc.bbarrett.me/MicroCenterProxy/getCached/{search}";
-            var response = await (token != null ? client.GetAsync(url, token.Value) : client.GetAsync(url));
-            if (response.IsSuccessStatusCode)
-            {
-                var body = await response.Content.ReadAsStringAsync();
-                var result = JsonConvert.DeserializeObject<Item>(body);
-                return result;
+                return await Item.FromUrl(res.Items[0].URL, storeId, token);
             }
 
             return null;
@@ -188,38 +156,53 @@ namespace MicroCLib.Models
         {
             var result = new SearchResults();
 
-            //
-            // MicroCenter's search result markup no longer emits data-name/data-id/price/data-brand/href/src
-            // in a fixed order on a single line, so we can't match them as one sequential regex anymore.
-            // Instead grab each product anchor's attribute blob + inner content, then pull fields out of
-            // that blob independently of attribute order.
-            //
-            var shortMatches = Regex.Matches(body, "<a id=\"hypProduct_\\d+\" class=\"image2 productClickItemV2\"([^>]*)>(.*?)</a>", RegexOptions.Singleline);
-            var stockMatches = Regex.Matches(body, "<div class=\"stock\">(.+?)<\\/div>", RegexOptions.Singleline);
-            var skuMatches = Regex.Matches(body, "<p class=\"sku\">SKU: (\\d{6})</p>");
-            var clearanceMatches = Regex.Matches(body, "\"clearance\".*?<\\/div>", RegexOptions.Singleline);
-            var newItems = new List<Item>();
-
-            //
-            // The "Showing X-Y of Z" summary is how we know a real total, including the Z=0 case MicroCenter
-            // uses for a genuine no-match query (which still renders a handful of unrelated "you might like"
-            // filler products using this same productClickItemV2 markup - so Items.Count alone can't tell
-            // a real match from filler). But a query that matches exactly one product (e.g. a SKU/UPC fast
-            // lookup) skips the summary block entirely, so its absence isn't itself a signal of zero results.
-            //
-            var match = Regex.Match(body, "of\\s*<strong>\\s*(\\d+)\\s*</strong>");
-            if (match.Success)
+            MatchCollection shortMatches;
+            try
             {
-                if (int.TryParse(match.Groups[1].Value, out int totalResults))
+                //
+                // MicroCenter's search result markup no longer emits data-name/data-id/price/data-brand/href/src
+                // in a fixed order on a single line, so we can't match them as one sequential regex anymore.
+                // Instead grab each product anchor's attribute blob + inner content, then pull fields out of
+                // that blob independently of attribute order.
+                //
+                shortMatches = Regex.Matches(body, "<a id=\"hypProduct_\\d+\" class=\"image2 productClickItemV2\"([^>]*)>(.*?)</a>", RegexOptions.Singleline, RegexTimeout);
+                var stockMatches = Regex.Matches(body, "<div class=\"stock\">(.+?)<\\/div>", RegexOptions.Singleline, RegexTimeout);
+                var skuMatches = Regex.Matches(body, "<p class=\"sku\">SKU: (\\d{6})</p>", RegexOptions.None, RegexTimeout);
+                var clearanceMatches = Regex.Matches(body, "\"clearance\".*?<\\/div>", RegexOptions.Singleline, RegexTimeout);
+                var newItems = new List<Item>();
+
+                //
+                // The "Showing X-Y of Z" summary is how we know a real total, including the Z=0 case MicroCenter
+                // uses for a genuine no-match query (which still renders a handful of unrelated "you might like"
+                // filler products using this same productClickItemV2 markup - so Items.Count alone can't tell
+                // a real match from filler). But a query that matches exactly one product (e.g. a SKU/UPC fast
+                // lookup) skips the summary block entirely, so its absence isn't itself a signal of zero results.
+                //
+                var match = Regex.Match(body, "of\\s*<strong>\\s*(\\d+)\\s*</strong>", RegexOptions.None, RegexTimeout);
+                if (match.Success)
                 {
-                    result.TotalResults = totalResults;
+                    if (int.TryParse(match.Groups[1].Value, out int totalResults))
+                    {
+                        result.TotalResults = totalResults;
+                    }
                 }
-            }
-            else if (!Regex.IsMatch(body, "st-search-summary"))
-            {
-                result.TotalResults = shortMatches.Count;
-            }
+                else if (!Regex.IsMatch(body, "st-search-summary", RegexOptions.None, RegexTimeout))
+                {
+                    result.TotalResults = shortMatches.Count;
+                }
 
+                return ParseItems(body, result, shortMatches, stockMatches, skuMatches, clearanceMatches, token);
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                // See Item.ParsePlans for the same reasoning - a body-wide pattern that no longer
+                // matches MicroCenter's current markup shouldn't be able to hang search entirely.
+                return result;
+            }
+        }
+
+        private static SearchResults ParseItems(string body, SearchResults result, MatchCollection shortMatches, MatchCollection stockMatches, MatchCollection skuMatches, MatchCollection clearanceMatches, CancellationToken? token)
+        {
             for (int i = 0; i < shortMatches.Count; i++)
             {
 

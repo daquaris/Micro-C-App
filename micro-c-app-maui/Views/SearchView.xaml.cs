@@ -61,7 +61,7 @@ namespace micro_c_app_maui.Views
                 Item item;
                 try
                 {
-                    item = await Search.LoadFast(searchValue);
+                    item = await Search.LoadFast(searchValue, SettingsPage.StoreID());
                 }
                 catch (Exception ex)
                 {

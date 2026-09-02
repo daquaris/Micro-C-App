@@ -17,7 +17,7 @@ namespace micro_c_app_maui
         public const string PREF_SELECTED_STORE = "selected_store";
         public const string PREF_TAX_RATE = "tax_rate";
         public const string PREF_THEME = "theme";
-        public const string PREF_VIBRATE = "vibarte";
+        public const string PREF_VIBRATE = "vibrate";
         public const string PREF_ANALYTICS_ENABLED = "analytics_enabled";
         public const string PREF_QUICKSEARCH_CATEGORIES = "quicksearch_categories";
         public const string PREF_HELPMESSAGE_INDEX = "helpmessage_index";

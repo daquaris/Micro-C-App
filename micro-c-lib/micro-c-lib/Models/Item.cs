@@ -419,25 +419,25 @@ namespace MicroCLib.Models
         // across an entire ~500KB+ product page.
         private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(2);
 
-        private static Regex GetSpecs => new Regex("<div class=\"spec-body\"><div(?: class=)?[a-zA-Z\"=]*?>(.*?)(.*?)</div>.?<div(?: class=)?[a-zA-Z\"=]*?>(.*?)</div", RegexOptions.Singleline, RegexTimeout);
-        private static Regex GetPrice => new Regex("'productPrice':'(.*?)',", RegexOptions.None, RegexTimeout);
-        private static Regex GetURL => new Regex("'pageUrl':'(.*?)',", RegexOptions.None, RegexTimeout);
-        private static Regex GetOriginalPrice => new Regex("\"savings\"><span>\\$([\\d\\.]+)", RegexOptions.None, RegexTimeout);
-        private static Regex GetOriginalPriceAlt => new Regex("<span id='pricing' content=\"(.*?)\">", RegexOptions.None, RegexTimeout);
-        private static Regex GetStock => new Regex("<span class=\"inventoryCnt\">(.*?) <", RegexOptions.None, RegexTimeout);
-        private static Regex GetName => new Regex("data-name=\"(.*?)\"", RegexOptions.None, RegexTimeout);
-        private static Regex GetPictures => new Regex("<img class= ?\"productImageZoom\" src=\"(.*?)\"", RegexOptions.None, RegexTimeout);
-        private static Regex GetFirstLocation => new Regex("class=\"findItLink\"(?:.*?)>(.*?)<", RegexOptions.None, RegexTimeout);
-        private static Regex GetOtherLocations => new Regex("class=\"otherLocation\">(.*?)<", RegexOptions.None, RegexTimeout);
-        private static Regex GetPlans => new Regex("#planDetails(?:.*?)>(.*?)<(?:.*?)pricing\"> \\$(.*?)<", RegexOptions.None, RegexTimeout);
-        private static Regex GetIDFromURL => new Regex("\\/product\\/(\\d+?)\\/", RegexOptions.None, RegexTimeout);
-        private static Regex GetBrand => new Regex("data-brand=\"(.*?)\"", RegexOptions.None, RegexTimeout);
-        private static Regex GetComingSoon => new Regex("<div class=\"comingsoon\"", RegexOptions.None, RegexTimeout);
+        private static readonly Regex GetSpecs = new Regex("<div class=\"spec-body\"><div(?: class=)?[a-zA-Z\"=]*?>(.*?)(.*?)</div>.?<div(?: class=)?[a-zA-Z\"=]*?>(.*?)</div", RegexOptions.Singleline, RegexTimeout);
+        private static readonly Regex GetPrice = new Regex("'productPrice':'(.*?)',", RegexOptions.None, RegexTimeout);
+        private static readonly Regex GetURL = new Regex("'pageUrl':'(.*?)',", RegexOptions.None, RegexTimeout);
+        private static readonly Regex GetOriginalPrice = new Regex("\"savings\"><span>\\$([\\d\\.]+)", RegexOptions.None, RegexTimeout);
+        private static readonly Regex GetOriginalPriceAlt = new Regex("<span id='pricing' content=\"(.*?)\">", RegexOptions.None, RegexTimeout);
+        private static readonly Regex GetStock = new Regex("<span class=\"inventoryCnt\">(.*?) <", RegexOptions.None, RegexTimeout);
+        private static readonly Regex GetName = new Regex("data-name=\"(.*?)\"", RegexOptions.None, RegexTimeout);
+        private static readonly Regex GetPictures = new Regex("<img class= ?\"productImageZoom\" src=\"(.*?)\"", RegexOptions.None, RegexTimeout);
+        private static readonly Regex GetFirstLocation = new Regex("class=\"findItLink\"(?:.*?)>(.*?)<", RegexOptions.None, RegexTimeout);
+        private static readonly Regex GetOtherLocations = new Regex("class=\"otherLocation\">(.*?)<", RegexOptions.None, RegexTimeout);
+        private static readonly Regex GetPlans = new Regex("#planDetails(?:.*?)>(.*?)<(?:.*?)pricing\"> \\$(.*?)<", RegexOptions.None, RegexTimeout);
+        private static readonly Regex GetIDFromURL = new Regex("\\/product\\/(\\d+?)\\/", RegexOptions.None, RegexTimeout);
+        private static readonly Regex GetBrand = new Regex("data-brand=\"(.*?)\"", RegexOptions.None, RegexTimeout);
+        private static readonly Regex GetComingSoon = new Regex("<div class=\"comingsoon\"", RegexOptions.None, RegexTimeout);
 
-        private static Regex GetClearanceItems => new Regex("clearance-body(.*?)<\\/tr>", RegexOptions.Singleline, RegexTimeout);
-        private static Regex GetClearanceState => new Regex("index_line.*?>(.*?)<", RegexOptions.Singleline, RegexTimeout);
-        private static Regex GetClearancePrice => new Regex("data-price=\"(.*?)\"", RegexOptions.Singleline, RegexTimeout);
-        private static Regex GetClearanceId => new Regex("ID: (\\d{6,7})<", RegexOptions.None, RegexTimeout);
+        private static readonly Regex GetClearanceItems = new Regex("clearance-body(.*?)<\\/tr>", RegexOptions.Singleline, RegexTimeout);
+        private static readonly Regex GetClearanceState = new Regex("index_line.*?>(.*?)<", RegexOptions.Singleline, RegexTimeout);
+        private static readonly Regex GetClearancePrice = new Regex("data-price=\"(.*?)\"", RegexOptions.Singleline, RegexTimeout);
+        private static readonly Regex GetClearanceId = new Regex("ID: (\\d{6,7})<", RegexOptions.None, RegexTimeout);
 
         public static string HttpDecode(string s)
         {
