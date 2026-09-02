@@ -6,7 +6,7 @@
     xmlns:views="clr-namespace:micro_c_app_maui.Views"
     Title="Micro C App">
 
-    <!-- PC Build/References/Settings/Reminders come back in later phases. -->
+    <!-- References/Settings/Reminders come back in later phases. -->
     <TabBar>
         <ShellContent
             Title="Search"
@@ -16,6 +16,10 @@
             Title="Quote"
             ContentTemplate="{DataTemplate views:QuotePage}"
             Route="QuotePage" />
+        <ShellContent
+            Title="PC Build"
+            ContentTemplate="{DataTemplate views:BuildPage}"
+            Route="BuildPage" />
     </TabBar>
 
 </Shell>
