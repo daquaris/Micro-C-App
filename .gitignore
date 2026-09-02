@@ -361,3 +361,8 @@ MigrationBackup/
 
 MicroCBuilder.pfx
 .idea
+
+# Release signing (see release-keystore-credentials.txt)
+release.keystore
+release-keystore-credentials.txt
+*.jks
