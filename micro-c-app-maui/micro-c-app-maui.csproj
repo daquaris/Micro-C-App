@@ -73,6 +73,12 @@
 		<PackageReference Include="FuzzySharp" Version="2.0.2" />
 		<PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="10.0.11" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+		<PackageReference Include="Markdig" Version="1.3.2" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Reference entries (Markdown files), ported from the classic app's Assets/Pages -->
+		<EmbeddedResource Include="Assets\Pages\**\*.md" />
 	</ItemGroup>
 
 	<ItemGroup>

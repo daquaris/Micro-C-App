@@ -4,9 +4,10 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:views="clr-namespace:micro_c_app_maui.Views"
+    xmlns:reference="clr-namespace:micro_c_app_maui.Views.Reference"
     Title="Micro C App">
 
-    <!-- References/Reminders come back in later phases. -->
+    <!-- Reminders comes back in a later phase. -->
     <TabBar>
         <ShellContent
             Title="Search"
@@ -20,6 +21,10 @@
             Title="PC Build"
             ContentTemplate="{DataTemplate views:BuildPage}"
             Route="BuildPage" />
+        <ShellContent
+            Title="References"
+            ContentTemplate="{DataTemplate reference:ReferenceIndexPage}"
+            Route="ReferenceIndexPage" />
         <ShellContent
             Title="Settings"
             ContentTemplate="{DataTemplate views:AppSettingsPage}"
