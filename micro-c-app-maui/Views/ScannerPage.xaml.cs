@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using ZXing.Net.Maui;
 
 namespace micro_c_app_maui.Views
@@ -17,24 +16,19 @@ namespace micro_c_app_maui.Views
         // can invoke OnScanResult (and so pop/submit) more than once.
         private bool hasDetected;
 
-        // TEMPORARY diagnostic counter - FrameReady fires on every camera frame regardless of
-        // whether ZXing found a barcode in it, unlike BarcodesDetected (which only fires on a hit).
-        // That makes it the one signal that can tell "camera frames never reach the analyzer" apart
-        // from "frames arrive but nothing ever decodes". Remove alongside debugLabel once fixed.
-        private long frameCount;
-
-        // TEMPORARY - polls CrashLog on a timer (rather than only on FrameReady/BarcodesDetected)
-        // so the label keeps updating even in the exact failure case we're chasing: camera reopen
-        // that silently stops producing frames. Remove alongside CrashLog/debugLabel once fixed.
-        private IDispatcherTimer diagnosticTimer;
+        // CameraBarcodeReaderView never sets a continuous autofocus mode on Android (confirmed by
+        // reading ZXing.Net.Maui's CameraManager.android.cs - Preview/ImageAnalysis are built with
+        // only a resolution selector, no AF mode, and nothing in this page ever called AutoFocus()).
+        // A single focus-metering scan locks the lens and disables continuous AF for ~5s, so most
+        // frames are simply out of focus - the screenshot that surfaced this showed a visibly blurry
+        // barcode despite a clean preview. Re-triggering AutoFocus() periodically keeps the lens
+        // hunting instead of sitting locked wherever it happened to land.
+        private IDispatcherTimer autoFocusTimer;
 
         public ScannerPage()
         {
             InitializeComponent();
 
-            // UPC/EAN are 1D formats and decode reliably only once the camera actually settles
-            // focus - TryHarder plus a mid-resolution preview (rather than whatever oddball
-            // default the device picks) makes that consistent across devices.
             scanner.Options = new BarcodeReaderOptions
             {
                 Formats = BarcodeFormats.All,
@@ -42,8 +36,6 @@ namespace micro_c_app_maui.Views
                 TryHarder = true,
                 CameraResolutionSelector = SelectCameraResolution
             };
-
-            scanner.FrameReady += OnFrameReady;
         }
 
         private static CameraResolution SelectCameraResolution(IReadOnlyList<CameraResolution> availableResolutions)
@@ -64,56 +56,33 @@ namespace micro_c_app_maui.Views
             base.OnAppearing();
             scanner.IsDetecting = true;
 
-            CrashLog.Write("ScannerPage appearing - opening camera");
-
-            diagnosticTimer = Dispatcher.CreateTimer();
-            diagnosticTimer.Interval = TimeSpan.FromSeconds(1);
-            diagnosticTimer.Tick += (s, e) => RefreshDiagnosticLabel();
-            diagnosticTimer.Start();
+            // AutoFocus() is a no-op until the camera is actually bound (CanFocus() checks for a
+            // live camera + sized preview), so starting immediately is harmless - it just won't do
+            // anything on the first tick or two.
+            autoFocusTimer = Dispatcher.CreateTimer();
+            autoFocusTimer.Interval = TimeSpan.FromSeconds(2);
+            autoFocusTimer.Tick += (s, e) => scanner.AutoFocus();
+            autoFocusTimer.Start();
         }
 
         protected override void OnDisappearing()
         {
-            CrashLog.Write($"ScannerPage disappearing - frames analyzed this session: {Interlocked.Read(ref frameCount)}");
+            autoFocusTimer?.Stop();
+            autoFocusTimer = null;
 
             scanner.IsDetecting = false;
             scanner.IsTorchOn = false;
-
-            diagnosticTimer?.Stop();
-            diagnosticTimer = null;
-
             base.OnDisappearing();
         }
 
-        private void RefreshDiagnosticLabel()
-        {
-            var frames = Interlocked.Read(ref frameCount);
-            debugLabel.Text = $"frames analyzed: {frames}{Environment.NewLine}{CrashLog.ReadLast(4)}";
-        }
-
-        // TEMPORARY diagnostic - fires on every camera frame regardless of detection. If the count
-        // never climbs, frames aren't reaching the analyzer at all (camera/binding problem). If it
-        // climbs steadily but OnBarcodesDetected never fires, frames are being analyzed but nothing
-        // is ever decoding (image-format/decoder problem). The label itself is refreshed by
-        // diagnosticTimer, not here, so it keeps updating even if frames stop entirely.
-        private void OnFrameReady(object sender, ZXing.Net.Maui.CameraFrameBufferEventArgs e)
-            => Interlocked.Increment(ref frameCount);
-
         private void OnBarcodesDetected(object sender, BarcodeDetectionEventArgs e)
         {
-            var count = e.Results?.Length ?? 0;
-
-            if (count > 0)
-            {
-                CrashLog.Write($"BarcodesDetected: {e.Results[0].Format} -> {e.Results[0].Value}");
-            }
-
             if (hasDetected)
             {
                 return;
             }
 
-            var value = count > 0 ? e.Results[0].Value : null;
+            var value = e.Results?.Length > 0 ? e.Results[0].Value : null;
             if (string.IsNullOrWhiteSpace(value))
             {
                 return;

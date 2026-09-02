@@ -16,17 +16,5 @@
                 VerticalOptions="Start"
                 Margin="20"
                 Clicked="TorchClicked" />
-        <!-- TEMPORARY diagnostic label - remove once scanning is confirmed working on-device. -->
-        <Label x:Name="debugLabel"
-               Text="waiting for frames..."
-               TextColor="Lime"
-               BackgroundColor="#CC000000"
-               FontSize="16"
-               FontAttributes="Bold"
-               Padding="10"
-               Margin="0,90,0,0"
-               HorizontalOptions="Fill"
-               HorizontalTextAlignment="Center"
-               VerticalOptions="Start" />
     </Grid>
 </ContentPage>
