@@ -70,7 +70,7 @@ namespace micro_c_app_maui.Views
                     Vibration.Vibrate();
                 }
 
-                await Application.Current.MainPage.Navigation.PopModalAsync();
+                await (Application.Current?.MainPage?.Navigation?.PopModalAsync() ?? Task.CompletedTask);
                 try
                 {
                     await Submit(result);
@@ -93,7 +93,7 @@ namespace micro_c_app_maui.Views
                 }
             };
 
-            await Application.Current.MainPage.Navigation.PushModalAsync(scanPage);
+            await (Application.Current?.MainPage?.Navigation?.PushModalAsync(scanPage) ?? Task.CompletedTask);
         }
 
         public async Task Submit(string searchValue)
@@ -142,7 +142,20 @@ namespace micro_c_app_maui.Views
         // Used by the quick-search category grid to browse a whole category rather than a specific query.
         public async Task SearchCategory(string categoryFilter)
         {
-            await SearchAndShowResults(null, categoryFilter);
+            if (isBusy)
+            {
+                return;
+            }
+
+            isBusy = true;
+            try
+            {
+                await SearchAndShowResults(null, categoryFilter);
+            }
+            finally
+            {
+                isBusy = false;
+            }
         }
 
         private async Task SearchAndShowResults(string searchValue, string categoryFilter)
@@ -166,7 +179,17 @@ namespace micro_c_app_maui.Views
 
             if (results.Items.Count == 1)
             {
-                var item = await Item.FromUrl(results.Items[0].URL, SettingsPage.StoreID());
+                Item item;
+                try
+                {
+                    item = await Item.FromUrl(results.Items[0].URL, SettingsPage.StoreID());
+                }
+                catch (Exception ex)
+                {
+                    Error?.Invoke($"Search failed: {ex.Message}");
+                    return;
+                }
+
                 App.SearchCache?.Add(item);
                 ProductFound?.Invoke(item);
                 return;
@@ -179,14 +202,24 @@ namespace micro_c_app_maui.Views
                 vm.ParseResults(results);
                 vm.ItemSelected += async (selected) =>
                 {
-                    var full = await Item.FromUrl(selected.URL, SettingsPage.StoreID());
+                    Item full;
+                    try
+                    {
+                        full = await Item.FromUrl(selected.URL, SettingsPage.StoreID());
+                    }
+                    catch (Exception ex)
+                    {
+                        Error?.Invoke($"Search failed: {ex.Message}");
+                        return;
+                    }
+
                     App.SearchCache?.Add(full);
-                    await Application.Current.MainPage.Navigation.PopAsync();
+                    await (Application.Current?.MainPage?.Navigation?.PopAsync() ?? Task.CompletedTask);
                     ProductFound?.Invoke(full);
                 };
             }
 
-            await Application.Current.MainPage.Navigation.PushAsync(resultsPage);
+            await (Application.Current?.MainPage?.Navigation?.PushAsync(resultsPage) ?? Task.CompletedTask);
         }
     }
 }

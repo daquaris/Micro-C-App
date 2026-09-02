@@ -28,7 +28,7 @@ namespace micro_c_app_maui.ViewModels
         public ICommand Save { get; }
         public ICommand Load { get; }
 
-        public float Subtotal => Components.Sum(c => c.Item?.Price ?? 0f);
+        public float Subtotal => Components.Sum(c => c.Item != null ? c.Item.Price * c.Item.Quantity : 0f);
         public float TaxedTotal => Subtotal * SettingsPage.TaxRateFactor();
 
         public BuildPageViewModel()
@@ -68,7 +68,20 @@ namespace micro_c_app_maui.ViewModels
                     vm.ParseResults(results);
                     vm.ItemSelected += async (selected) =>
                     {
-                        var full = await Item.FromUrl(selected.URL, SettingsPage.StoreID());
+                        Item full;
+                        try
+                        {
+                            full = await Item.FromUrl(selected.URL, SettingsPage.StoreID());
+                        }
+                        catch
+                        {
+                            if (Shell.Current != null)
+                            {
+                                await Shell.Current.DisplayAlert("Error", "Failed to load product - check your connection and try again.", "Ok");
+                            }
+                            return;
+                        }
+
                         comp.Item = full;
                         UpdateProperties();
                         await Shell.Current.Navigation.PopAsync();

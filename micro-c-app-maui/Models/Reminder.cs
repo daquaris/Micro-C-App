@@ -48,7 +48,7 @@ namespace micro_c_app_maui.Models
         public async Task<bool> CheckStock()
         {
             var item = await Item.FromUrl(URL, SettingsPage.StoreID());
-            return item.Stock != "Sold Out" && item.Stock != "0";
+            return item?.Stock is not null && item.Stock != "Sold Out" && item.Stock != "0";
         }
 
         public static void Add(Reminder reminder)
@@ -95,7 +95,11 @@ namespace micro_c_app_maui.Models
             try
             {
                 var text = JsonSerializer.Serialize(AllReminders);
-                File.WriteAllText(Path, text);
+                // Write-then-move, same as SavedBuild.Save() - a kill mid-write can't leave a
+                // truncated/corrupt Reminders.json.
+                var tempPath = Path + ".tmp";
+                File.WriteAllText(tempPath, text);
+                File.Move(tempPath, Path, overwrite: true);
             }
             catch
             {
