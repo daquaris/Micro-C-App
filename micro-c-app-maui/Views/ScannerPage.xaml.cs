@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using ZXing.Net.Maui;
 
 namespace micro_c_app_maui.Views
@@ -17,6 +19,30 @@ namespace micro_c_app_maui.Views
         public ScannerPage()
         {
             InitializeComponent();
+
+            // UPC/EAN are 1D formats and decode reliably only once the camera actually settles
+            // focus - TryHarder plus a mid-resolution preview (rather than whatever oddball
+            // default the device picks) makes that consistent across devices.
+            scanner.Options = new BarcodeReaderOptions
+            {
+                Formats = BarcodeFormats.All,
+                AutoRotate = true,
+                TryHarder = true,
+                CameraResolutionSelector = SelectCameraResolution
+            };
+        }
+
+        private static CameraResolution SelectCameraResolution(IReadOnlyList<CameraResolution> availableResolutions)
+        {
+            if (availableResolutions.Count == 0)
+            {
+                return new CameraResolution(1280, 720);
+            }
+
+            return availableResolutions
+                .OrderBy(resolution => Math.Abs((resolution.Width * resolution.Height) - (1280 * 720)))
+                .ThenBy(resolution => Math.Abs(resolution.Width - 1280) + Math.Abs(resolution.Height - 720))
+                .First();
         }
 
         private void OnBarcodesDetected(object sender, BarcodeDetectionEventArgs e)

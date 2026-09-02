@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using Sentry.Maui;
 using ZXing.Net.Maui;
+using ZXing.Net.Maui.Controls;
 
 namespace micro_c_app_maui;
 
