@@ -7,7 +7,6 @@
     xmlns:reference="clr-namespace:micro_c_app_maui.Views.Reference"
     Title="Micro C App">
 
-    <!-- Reminders comes back in a later phase. -->
     <TabBar>
         <ShellContent
             Title="Search"
@@ -25,6 +24,10 @@
             Title="References"
             ContentTemplate="{DataTemplate reference:ReferenceIndexPage}"
             Route="ReferenceIndexPage" />
+        <ShellContent
+            Title="Reminders"
+            ContentTemplate="{DataTemplate views:RemindersPage}"
+            Route="RemindersPage" />
         <ShellContent
             Title="Settings"
             ContentTemplate="{DataTemplate views:AppSettingsPage}"

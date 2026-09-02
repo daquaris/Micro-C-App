@@ -29,7 +29,10 @@
                 <Label Text="{Binding Item.Specs[UPC], StringFormat='UPC: {0}'}" />
                 <Label Text="{Binding Item.Price, StringFormat='Price: ${0:0.00}'}" />
                 <Label Text="{Binding Item.Stock, StringFormat='Stock: {0}'}" />
-                <Button Text="Open on microcenter.com" Command="{Binding GoToWebpage}" HorizontalOptions="Start" />
+                <HorizontalStackLayout Spacing="8">
+                    <Button Text="Open on microcenter.com" Command="{Binding GoToWebpage}" />
+                    <Button Text="Add Reminder" Command="{Binding AddReminderCommand, Source={x:Reference page}}" />
+                </HorizontalStackLayout>
             </VerticalStackLayout>
         </ScrollView>
 
