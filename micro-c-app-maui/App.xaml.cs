@@ -33,6 +33,6 @@ public partial class App : Application
 
 	private void SettingsUpdated()
 	{
-		AnalyticsService.Track($"Store {SettingsPage.StoreID()}");
+		AnalyticsService.Track("Store ID", SettingsPage.StoreID());
 	}
 }

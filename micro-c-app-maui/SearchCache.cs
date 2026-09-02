@@ -22,13 +22,13 @@ namespace micro_c_app_maui
 
         private void Purge()
         {
-            Items.RemoveAll(i => DateTime.Now - i.created > CacheLength);
+            Items.RemoveAll(i => DateTime.UtcNow - i.created > CacheLength);
         }
 
         public Item? Get(string search)
         {
             Purge();
-            return Items.Select(i => i.item).FirstOrDefault(i => i.SKU == search || (i.Specs.ContainsKey("UPC") && i.Specs["UPC"] == search))?.CloneAndResetQuantity();
+            return Items.Select(i => i.item).FirstOrDefault(i => i.SKU == search || (i.Specs?.ContainsKey("UPC") == true && i.Specs["UPC"] == search))?.CloneAndResetQuantity();
         }
 
         public void Add(Item item)
@@ -38,7 +38,7 @@ namespace micro_c_app_maui
                 return;
             }
             Items.RemoveAll(i => i.item.SKU == item.SKU);
-            Items.Add((DateTime.Now, item));
+            Items.Add((DateTime.UtcNow, item));
         }
     }
 }

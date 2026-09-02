@@ -20,7 +20,11 @@ namespace micro_c_app_maui
 
             if (values.Length % 2 != 0)
             {
+                // A caller passed a name with no matching value (or an odd trailing one). Silently
+                // truncating and sending the rest used to hide the bug in production telemetry -
+                // drop the call instead so it's obviously missing rather than quietly wrong.
                 System.Diagnostics.Debug.WriteLine("Error: AnalyticsService.Track parameter 'values' must be an even total!");
+                return;
             }
 
             var props = new Dictionary<string, string>();
@@ -46,6 +50,9 @@ namespace micro_c_app_maui
 
             if (values.Length % 2 != 0)
             {
+                // Unlike Track (breadcrumb-only), the exception itself is the point here - drop the
+                // trailing unmatched value but still capture the exception rather than losing the
+                // whole report over a malformed extras call.
                 System.Diagnostics.Debug.WriteLine("Error: AnalyticsService.TrackError parameter 'values' must be an even total!");
             }
 

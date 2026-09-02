@@ -42,7 +42,16 @@ namespace micro_c_app_maui
                 return PresetBYO().ToList();
             }
 
-            return JsonConvert.DeserializeObject<List<ComponentTypeInfo>>(json) ?? PresetBYO().ToList();
+            try
+            {
+                return JsonConvert.DeserializeObject<List<ComponentTypeInfo>>(json) ?? PresetBYO().ToList();
+            }
+            catch (JsonException)
+            {
+                // A corrupted preference value or a future ComponentTypeInfo shape change shouldn't
+                // hard-lock the app out of its quick-search categories - fall back to the defaults.
+                return PresetBYO().ToList();
+            }
         }
 
         public static void StoreID(string id) { Preferences.Set(PREF_SELECTED_STORE, id); SendSettingsUpdated(); }
