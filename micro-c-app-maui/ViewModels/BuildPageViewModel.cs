@@ -119,7 +119,7 @@ namespace micro_c_app_maui.ViewModels
                 return;
             }
 
-            if (SavedBuild.ListSavedNames().Contains(name) && name != BuildName)
+            if (SavedBuild.Exists(name) && !SavedBuild.IsSameSave(name, BuildName))
             {
                 var overwrite = await Shell.Current.DisplayAlert("Save Build", $"A build named \"{name}\" already exists. Overwrite it?", "Yes", "No");
                 if (!overwrite)

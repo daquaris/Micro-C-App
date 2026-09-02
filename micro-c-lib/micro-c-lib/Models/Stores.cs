@@ -88,8 +88,12 @@ namespace MicroCLib.Models
                     return true;
                 }
             }
-            catch
+            catch (Exception e)
             {
+                // Best-effort refresh - AllStores keeps its previous (fallback or last-successful)
+                // value on failure, so this is never fatal. Logged only so a markup change here isn't
+                // as invisible as the ParsePlans hang was before someone happened to investigate it.
+                System.Diagnostics.Debug.WriteLine($"Stores.RefreshFromWeb failed: {e.Message}");
                 return false;
             }
         }

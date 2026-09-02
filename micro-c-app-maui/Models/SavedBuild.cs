@@ -48,6 +48,18 @@ namespace micro_c_app_maui.Models
             }
         }
 
+        // Checking ListSavedNames().Contains(name) against a raw, unsanitized user-typed name was
+        // wrong: a name containing any character SanitizeFileName replaces (e.g. "My/Build") never
+        // matches the sanitized on-disk name it actually collides with ("My_Build"), so the caller's
+        // overwrite warning silently never fires and Save() clobbers the existing file anyway.
+        public static bool Exists(string name) => File.Exists(PathFor(name));
+
+        // Two different display names can sanitize to the same file ("My/Build" and "My_Build" both
+        // become "My_Build.json") - compare the resolved paths, not the raw strings, so the caller's
+        // "is this the build I already have loaded" check can't disagree with what Exists() itself
+        // just checked.
+        public static bool IsSameSave(string? a, string? b) => a != null && b != null && PathFor(a) == PathFor(b);
+
         public static void Save(string name, IEnumerable<BuildComponent> components)
         {
             System.IO.Directory.CreateDirectory(Directory);
@@ -57,7 +69,25 @@ namespace micro_c_app_maui.Models
                 SavedAt = DateTime.Now,
                 Components = components.Where(c => c.Item != null).ToList(),
             };
-            File.WriteAllText(PathFor(name), JsonSerializer.Serialize(build));
+
+            var path = PathFor(name);
+            // Write-then-move instead of a direct File.WriteAllText: if the app is killed mid-write,
+            // the temp file is left orphaned but the real save file is never touched, so a save can't
+            // be left half-written/corrupted.
+            var tempPath = path + ".tmp";
+            try
+            {
+                File.WriteAllText(tempPath, JsonSerializer.Serialize(build));
+                File.Move(tempPath, path, overwrite: true);
+            }
+            catch
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+                throw;
+            }
         }
 
         public static SavedBuild? Load(string name)

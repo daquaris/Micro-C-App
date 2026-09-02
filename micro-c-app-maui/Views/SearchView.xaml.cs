@@ -15,6 +15,14 @@ namespace micro_c_app_maui.Views
         public event Action<Item> ProductFound;
         public event Action<string> Error;
 
+        // Guards both entry points below against rapid double-taps - without it, tapping Search
+        // twice fires concurrent lookups, and tapping Scan twice pushes a second scanner page on top
+        // of the first. Spans the *whole* async flow, not just the synchronous part of each handler:
+        // for Scan specifically, it's only cleared once a scanned result finishes its own Submit(), or
+        // (via ScannerPage.Disappearing) once the user backs out without scanning anything - clearing
+        // it right after PushModalAsync returns would only debounce the push itself, not the scan.
+        private bool isBusy;
+
         public SearchView()
         {
             InitializeComponent();
@@ -22,21 +30,69 @@ namespace micro_c_app_maui.Views
 
         private async void OnSubmitClicked(object sender, EventArgs e)
         {
-            await Submit(searchEntry.Text);
+            if (isBusy)
+            {
+                return;
+            }
+
+            isBusy = true;
+            try
+            {
+                await Submit(searchEntry.Text);
+            }
+            finally
+            {
+                isBusy = false;
+            }
         }
 
         private async void OnScanClicked(object sender, EventArgs e)
         {
-            var scanPage = new ScannerPage();
-            scanPage.OnScanResult += async (result) =>
+            if (isBusy)
             {
+                return;
+            }
+
+            isBusy = true;
+
+            var scanPage = new ScannerPage();
+            var gotResult = false;
+
+            // A named local function (rather than an anonymous lambda) so it can unsubscribe itself
+            // once used.
+            async void HandleScan(string result)
+            {
+                gotResult = true;
+                scanPage.OnScanResult -= HandleScan;
+
                 if (SettingsPage.Vibrate())
                 {
                     Vibration.Vibrate();
                 }
+
                 await Application.Current.MainPage.Navigation.PopModalAsync();
-                await Submit(result);
+                try
+                {
+                    await Submit(result);
+                }
+                finally
+                {
+                    isBusy = false;
+                }
+            }
+
+            scanPage.OnScanResult += HandleScan;
+            // Disappearing fires for every dismissal path. HandleScan already clears isBusy for the
+            // scan-and-submit path (after Submit finishes); this only needs to cover backing out of
+            // the scanner (e.g. the hardware back button) without ever scanning anything.
+            scanPage.Disappearing += (s, args) =>
+            {
+                if (!gotResult)
+                {
+                    isBusy = false;
+                }
             };
+
             await Application.Current.MainPage.Navigation.PushModalAsync(scanPage);
         }
 
