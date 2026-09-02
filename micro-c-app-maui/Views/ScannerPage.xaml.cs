@@ -45,14 +45,39 @@ namespace micro_c_app_maui.Views
                 .First();
         }
 
+        protected override void OnAppearing()
+        {
+            base.OnAppearing();
+            scanner.IsDetecting = true;
+        }
+
+        protected override void OnDisappearing()
+        {
+            scanner.IsDetecting = false;
+            scanner.IsTorchOn = false;
+            base.OnDisappearing();
+        }
+
         private void OnBarcodesDetected(object sender, BarcodeDetectionEventArgs e)
         {
+            var count = e.Results?.Length ?? 0;
+
+            // TEMPORARY diagnostic - proves whether ZXing is decoding frames at all vs. failing
+            // somewhere after. Remove this dispatch + the XAML label once scanning is confirmed
+            // working on-device.
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                debugLabel.Text = count > 0
+                    ? $"detected: {e.Results[0].Format} -> {e.Results[0].Value}"
+                    : $"frame analyzed, no barcode ({DateTime.Now:T})";
+            });
+
             if (hasDetected)
             {
                 return;
             }
 
-            var value = e.Results?.Length > 0 ? e.Results[0].Value : null;
+            var value = count > 0 ? e.Results[0].Value : null;
             if (string.IsNullOrWhiteSpace(value))
             {
                 return;
