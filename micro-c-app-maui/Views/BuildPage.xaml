@@ -36,6 +36,10 @@
             </CollectionView.ItemTemplate>
         </CollectionView>
 
-        <Button Grid.Row="2" Text="Reset Build" Command="{Binding Reset}" Margin="0,8,0,0" HorizontalOptions="Start" />
+        <HorizontalStackLayout Grid.Row="2" Spacing="8" Margin="0,8,0,0">
+            <Button Text="Save" Command="{Binding Save}" />
+            <Button Text="Load" Command="{Binding Load}" />
+            <Button Text="Reset Build" Command="{Binding Reset}" />
+        </HorizontalStackLayout>
     </Grid>
 </ContentPage>
