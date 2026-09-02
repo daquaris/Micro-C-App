@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace micro_c_app_maui.Models
@@ -27,8 +28,15 @@ namespace micro_c_app_maui.Models
         public string SKU { get => sku; set => SetProperty(ref sku, value); }
         public string PictureURL { get => pictureURL; set => SetProperty(ref pictureURL, value); }
         public string URL { get => url; set => SetProperty(ref url, value); }
-        public string Message { get => message ?? ""; set => SetProperty(ref message, value); }
+        public string Message { get => message ?? ""; set { SetProperty(ref message, value); OnPropertyChanged(nameof(HasMessage)); } }
         public bool Notified { get => notified; set => SetProperty(ref notified, value); }
+
+        // Message is never null (see getter above), so the plain NullBoolConverter used elsewhere
+        // (which only checks value != null) can't tell "no note" from "empty note" - it left the
+        // note label visible (as a blank line) on every reminder. Same fix as BuildComponent.HasMessage.
+        // JsonIgnore keeps this out of Reminders.json - it's derived from Message, not real state.
+        [JsonIgnore]
+        public bool HasMessage => !string.IsNullOrWhiteSpace(Message);
 
         public const string FILENAME = "Reminders.json";
         static string Path => System.IO.Path.Combine(FileSystem.AppDataDirectory, FILENAME);

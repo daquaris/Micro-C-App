@@ -24,7 +24,7 @@
                         <VerticalStackLayout Grid.Column="0">
                             <Label Text="{Binding Name}" MaxLines="2" LineBreakMode="TailTruncation" />
                             <Label Text="{Binding SKU, StringFormat='SKU {0}'}" FontSize="Small" Opacity="0.7" />
-                            <Label Text="{Binding Message}" FontSize="Small" Opacity="0.7" IsVisible="{Binding Message, Converter={StaticResource NullBoolConverter}}" />
+                            <Label Text="{Binding Message}" FontSize="Small" Opacity="0.7" IsVisible="{Binding HasMessage}" />
                         </VerticalStackLayout>
                         <Label Grid.Column="1" Text="Restocked!" TextColor="Green" FontAttributes="Bold" VerticalOptions="Center"
                                IsVisible="{Binding Notified}" />
