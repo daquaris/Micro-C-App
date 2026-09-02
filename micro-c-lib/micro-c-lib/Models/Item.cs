@@ -58,8 +58,6 @@ namespace MicroCLib.Models
 
         public static async Task<Item> FromUrl(string urlIdStub, string storeId, CancellationToken? token = null, IProgress<ProgressInfo> progress = null)
         {
-            var item = new Item();
-
             var paramIndex = urlIdStub.IndexOf('?');
             if(paramIndex > 0)
             {
@@ -94,35 +92,43 @@ namespace MicroCLib.Models
 
                 var body = await response.Content.ReadAsStringAsync();
                 token?.ThrowIfCancellationRequested();
-                item.ID = ParseIDFromURL(urlIdStub);
-                item.URL = ParseURL(body);
+                return ParseItem(urlIdStub, body);
+            }
+        }
 
-                item.Name = ParseName(body);
-                item.Brand = ParseBrand(body);
-                item.Specs = ParseSpecs(body);
-                item.SKU = ParseSKU(item, body);
+        // Split out of FromUrl so tests can exercise the parsing logic against a saved fixture body
+        // instead of making a live network request for every test run.
+        public static Item ParseItem(string urlIdStub, string body)
+        {
+            var item = new Item
+            {
+                ID = ParseIDFromURL(urlIdStub),
+                URL = ParseURL(body),
+                Name = ParseName(body),
+                Brand = ParseBrand(body),
+                Specs = ParseSpecs(body)
+            };
+            item.SKU = ParseSKU(item, body);
 
-                item.Stock = ParseStock(body);
-                item.Price = ParsePrice(body);
-                item.OriginalPrice = ParseOriginalPrice(body, item);
+            item.Stock = ParseStock(body);
+            item.Price = ParsePrice(body);
+            item.OriginalPrice = ParseOriginalPrice(body, item);
 
-                item.Location = ParseLocations(body);
-                item.PictureUrls = ParsePictures(body);
+            item.Location = ParseLocations(body);
+            item.PictureUrls = ParsePictures(body);
 
-                item.Plans = ParsePlans(body);
-                item.ComingSoon = ParseComingSoon(body);
-                if (item.ComingSoon)
-                {
-                    item.Stock = "Soon";
-                }
-
-                item.Categories = ParseCategories(body);
-                item.ComponentType = GetPrimaryType(item.Categories);
-
-                item.ClearanceItems = ParseClearance(body);
+            item.Plans = ParsePlans(body);
+            item.ComingSoon = ParseComingSoon(body);
+            if (item.ComingSoon)
+            {
+                item.Stock = "Soon";
             }
 
-            token?.ThrowIfCancellationRequested();
+            item.Categories = ParseCategories(body);
+            item.ComponentType = GetPrimaryType(item.Categories);
+
+            item.ClearanceItems = ParseClearance(body);
+
             return item;
         }
 
@@ -265,10 +271,22 @@ namespace MicroCLib.Models
         }
         public static List<Plan> ParsePlans(string body)
         {
-            var matches = GetPlans.Matches(body);
             var result = new List<Plan>();
-            if (matches.Count > 0)
+
+            //
+            // MicroCenter's protection-plan markup moved to a JS-driven form (id="planDetails0",
+            // "options-plans2022") that no longer has the old #planDetails/name/price sequence this
+            // regex expects. That's normally just "no match" - but the literal "#planDetails" prefix
+            // still occurs (matching "planDetails0"), which hands the engine a real anchor to
+            // backtrack from while it fails to find the rest of the pattern across the remaining
+            // page, and GetPlans has no timeout of its own to bound that. Confirmed against a live
+            // product page: this took well over a minute before being killed, which would freeze
+            // every single product lookup (Item.FromUrl calls this unconditionally) - very plausibly
+            // what "the app is down" reports were actually seeing. Bound it here and degrade to no
+            // plans instead of hanging.
+            try
             {
+                var matches = GetPlans.Matches(body);
                 foreach (Match m in matches)
                 {
                     if (float.TryParse(m.Groups[2].Value, out float price))
@@ -280,6 +298,9 @@ namespace MicroCLib.Models
                         });
                     }
                 }
+            }
+            catch (RegexMatchTimeoutException)
+            {
             }
 
             return result;
@@ -392,25 +413,31 @@ namespace MicroCLib.Models
         }
 
 
-        private static Regex GetSpecs => new Regex("<div class=\"spec-body\"><div(?: class=)?[a-zA-Z\"=]*?>(.*?)(.*?)</div>.?<div(?: class=)?[a-zA-Z\"=]*?>(.*?)</div", RegexOptions.Singleline);
-        private static Regex GetPrice => new Regex("'productPrice':'(.*?)',");
-        private static Regex GetURL => new Regex("'pageUrl':'(.*?)',");
-        private static Regex GetOriginalPrice => new Regex("\"savings\"><span>\\$([\\d\\.]+)");
-        private static Regex GetOriginalPriceAlt => new Regex("<span id='pricing' content=\"(.*?)\">");
-        private static Regex GetStock => new Regex("<span class=\"inventoryCnt\">(.*?) <");
-        private static Regex GetName => new Regex("data-name=\"(.*?)\"");
-        private static Regex GetPictures => new Regex("<img class= ?\"productImageZoom\" src=\"(.*?)\"");
-        private static Regex GetFirstLocation => new Regex("class=\"findItLink\"(?:.*?)>(.*?)<");
-        private static Regex GetOtherLocations => new Regex("class=\"otherLocation\">(.*?)<");
-        private static Regex GetPlans => new Regex("#planDetails(?:.*?)>(.*?)<(?:.*?)pricing\"> \\$(.*?)<");
-        private static Regex GetIDFromURL => new Regex("\\/product\\/(\\d+?)\\/");
-        private static Regex GetBrand => new Regex("data-brand=\"(.*?)\"");
-        private static Regex GetComingSoon => new Regex("<div class=\"comingsoon\"");
+        // Bounds every regex below to fail fast instead of hanging when a page no longer looks the
+        // way a pattern expects (see ParsePlans) - MicroCenter's markup changes over time and a
+        // partial anchor match is enough to make an unbounded lazy-quantifier pattern backtrack
+        // across an entire ~500KB+ product page.
+        private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(2);
 
-        private static Regex GetClearanceItems => new Regex("clearance-body(.*?)<\\/tr>", RegexOptions.Singleline);
-        private static Regex GetClearanceState => new Regex("index_line.*?>(.*?)<", RegexOptions.Singleline);
-        private static Regex GetClearancePrice => new Regex("data-price=\"(.*?)\"", RegexOptions.Singleline);
-        private static Regex GetClearanceId => new Regex("ID: (\\d{6,7})<");
+        private static Regex GetSpecs => new Regex("<div class=\"spec-body\"><div(?: class=)?[a-zA-Z\"=]*?>(.*?)(.*?)</div>.?<div(?: class=)?[a-zA-Z\"=]*?>(.*?)</div", RegexOptions.Singleline, RegexTimeout);
+        private static Regex GetPrice => new Regex("'productPrice':'(.*?)',", RegexOptions.None, RegexTimeout);
+        private static Regex GetURL => new Regex("'pageUrl':'(.*?)',", RegexOptions.None, RegexTimeout);
+        private static Regex GetOriginalPrice => new Regex("\"savings\"><span>\\$([\\d\\.]+)", RegexOptions.None, RegexTimeout);
+        private static Regex GetOriginalPriceAlt => new Regex("<span id='pricing' content=\"(.*?)\">", RegexOptions.None, RegexTimeout);
+        private static Regex GetStock => new Regex("<span class=\"inventoryCnt\">(.*?) <", RegexOptions.None, RegexTimeout);
+        private static Regex GetName => new Regex("data-name=\"(.*?)\"", RegexOptions.None, RegexTimeout);
+        private static Regex GetPictures => new Regex("<img class= ?\"productImageZoom\" src=\"(.*?)\"", RegexOptions.None, RegexTimeout);
+        private static Regex GetFirstLocation => new Regex("class=\"findItLink\"(?:.*?)>(.*?)<", RegexOptions.None, RegexTimeout);
+        private static Regex GetOtherLocations => new Regex("class=\"otherLocation\">(.*?)<", RegexOptions.None, RegexTimeout);
+        private static Regex GetPlans => new Regex("#planDetails(?:.*?)>(.*?)<(?:.*?)pricing\"> \\$(.*?)<", RegexOptions.None, RegexTimeout);
+        private static Regex GetIDFromURL => new Regex("\\/product\\/(\\d+?)\\/", RegexOptions.None, RegexTimeout);
+        private static Regex GetBrand => new Regex("data-brand=\"(.*?)\"", RegexOptions.None, RegexTimeout);
+        private static Regex GetComingSoon => new Regex("<div class=\"comingsoon\"", RegexOptions.None, RegexTimeout);
+
+        private static Regex GetClearanceItems => new Regex("clearance-body(.*?)<\\/tr>", RegexOptions.Singleline, RegexTimeout);
+        private static Regex GetClearanceState => new Regex("index_line.*?>(.*?)<", RegexOptions.Singleline, RegexTimeout);
+        private static Regex GetClearancePrice => new Regex("data-price=\"(.*?)\"", RegexOptions.Singleline, RegexTimeout);
+        private static Regex GetClearanceId => new Regex("ID: (\\d{6,7})<", RegexOptions.None, RegexTimeout);
 
         public static string HttpDecode(string s)
         {
