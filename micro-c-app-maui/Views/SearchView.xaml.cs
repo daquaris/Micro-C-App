@@ -209,30 +209,47 @@ namespace micro_c_app_maui.Views
             {
                 vm.SearchQuery = searchValue;
                 vm.ParseResults(results);
+                // The results list has no debounce (SelectionMode="None" + a per-row
+                // TapGestureRecognizer firing on every tap), so a fast double-tap fires ItemSelected
+                // twice - without this guard, two concurrent fetches would each race to pop the page,
+                // and the second PopAsync() (on a page the first already popped) throws.
+                var itemSelectionInFlight = false;
                 vm.ItemSelected += async (selected) =>
                 {
-                    Item full;
+                    if (itemSelectionInFlight)
+                    {
+                        return;
+                    }
+                    itemSelectionInFlight = true;
                     try
                     {
-                        full = await Item.FromUrl(selected.URL, SettingsPage.StoreID());
-                    }
-                    catch (Exception ex)
-                    {
-                        Error?.Invoke($"Search failed: {ex.Message}");
-                        return;
-                    }
+                        Item full;
+                        try
+                        {
+                            full = await Item.FromUrl(selected.URL, SettingsPage.StoreID());
+                        }
+                        catch (Exception ex)
+                        {
+                            Error?.Invoke($"Search failed: {ex.Message}");
+                            return;
+                        }
 
-                    // See the single-result NotFound check above - the same placeholder trap applies
-                    // to picking an item off the results list.
-                    if (full.NotFound)
-                    {
-                        Error?.Invoke($"Failed to load {selected.Name}");
-                        return;
-                    }
+                        // See the single-result NotFound check above - the same placeholder trap applies
+                        // to picking an item off the results list.
+                        if (full.NotFound)
+                        {
+                            Error?.Invoke($"Failed to load {selected.Name}");
+                            return;
+                        }
 
-                    App.SearchCache?.Add(full);
-                    await (Application.Current?.MainPage?.Navigation?.PopAsync() ?? Task.CompletedTask);
-                    ProductFound?.Invoke(full);
+                        App.SearchCache?.Add(full);
+                        await (Application.Current?.MainPage?.Navigation?.PopAsync() ?? Task.CompletedTask);
+                        ProductFound?.Invoke(full);
+                    }
+                    finally
+                    {
+                        itemSelectionInFlight = false;
+                    }
                 };
             }
 

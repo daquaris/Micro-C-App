@@ -37,22 +37,35 @@ namespace micro_c_app_maui.Models.Reference
             }
         }
 
+        // Stops one segment short of the leaf by design - the caller (ReferenceIndexPage) passes the
+        // full path including the leaf's own name, uses the returned node as the *parent* folder, and
+        // adds the leaf itself as a ReferenceEntry. Recursing on a single remaining segment would
+        // create a same-named ReferenceTree folder and nest the real entry one level too deep inside
+        // it, not "restore" a dropped leaf.
         public ReferenceTree CreateRoute(IEnumerable<string> path)
         {
-            if (path.Count() > 1)
+            // Was calling path.Count(), path.ElementAt(0), and path.Skip(1) as three separate
+            // enumerations - fine for the top-level string[] from Split('.'), but each recursive call
+            // passes a lazy Skip() result that isn't list-optimized on netstandard2.0, so every level
+            // re-walked the remaining segments 2-3 times. Materialize once instead.
+            var segments = path as IReadOnlyList<string> ?? path.ToList();
+            if (segments.Count <= 1)
             {
-                var name = path.ElementAt(0);
-                var node = Nodes.FirstOrDefault(n => n.Name == name);
-                if (node == null)
-                {
-                    var next = new ReferenceTree() { Name = name };
-                    Nodes.Add(next);
-                    return next.CreateRoute(path.Skip(1));
-                }
-                if (node is ReferenceTree tree)
-                {
-                    return tree.CreateRoute(path.Skip(1));
-                }
+                return this;
+            }
+
+            var name = segments[0];
+            var rest = segments.Skip(1);
+            var node = Nodes.FirstOrDefault(n => n.Name == name);
+            if (node == null)
+            {
+                var next = new ReferenceTree() { Name = name };
+                Nodes.Add(next);
+                return next.CreateRoute(rest);
+            }
+            if (node is ReferenceTree tree)
+            {
+                return tree.CreateRoute(rest);
             }
 
             return this;

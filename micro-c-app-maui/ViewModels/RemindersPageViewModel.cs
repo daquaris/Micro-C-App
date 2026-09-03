@@ -66,37 +66,49 @@ namespace micro_c_app_maui.ViewModels
 
         private async System.Threading.Tasks.Task DoCheckAll()
         {
-            if (Shell.Current == null)
+            // No debounce on the "Check All" button - without this guard, a fast double-tap starts a
+            // second DoCheckAll() while the first is still awaiting network calls, running two
+            // overlapping sequential loops (duplicate requests per reminder) and racing to show two
+            // "Check Stock" alerts. IsBusy is BaseViewModel's existing re-entrancy flag, unused so far.
+            if (Shell.Current == null || IsBusy)
             {
                 return;
             }
 
-            var restocked = 0;
-            foreach (var reminder in Reminders.Where(r => !r.Notified).ToList())
+            IsBusy = true;
+            try
             {
-                bool inStock;
-                try
+                var restocked = 0;
+                foreach (var reminder in Reminders.Where(r => !r.Notified).ToList())
                 {
-                    inStock = await reminder.CheckStock();
-                }
-                catch
-                {
-                    continue;
+                    bool inStock;
+                    try
+                    {
+                        inStock = await reminder.CheckStock();
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    if (inStock)
+                    {
+                        reminder.Notified = true;
+                        restocked++;
+                    }
                 }
 
-                if (inStock)
+                if (restocked > 0)
                 {
-                    reminder.Notified = true;
-                    restocked++;
+                    Reminder.SaveAll();
                 }
+
+                await Shell.Current.DisplayAlert("Check Stock", restocked > 0 ? $"{restocked} item(s) are back in stock!" : "No items are back in stock yet.", "Ok");
             }
-
-            if (restocked > 0)
+            finally
             {
-                Reminder.SaveAll();
+                IsBusy = false;
             }
-
-            await Shell.Current.DisplayAlert("Check Stock", restocked > 0 ? $"{restocked} item(s) are back in stock!" : "No items are back in stock yet.", "Ok");
         }
     }
 }

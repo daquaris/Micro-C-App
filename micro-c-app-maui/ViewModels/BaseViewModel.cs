@@ -33,6 +33,11 @@ namespace micro_c_app_maui.ViewModels
         {
             ShowActions = new Command<object>(async (object param) =>
             {
+                if (Shell.Current == null)
+                {
+                    return;
+                }
+
                 await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
                     var result = await Shell.Current.DisplayActionSheet("Actions", CANCEL_TEXT, null, Actions.Keys.ToArray());

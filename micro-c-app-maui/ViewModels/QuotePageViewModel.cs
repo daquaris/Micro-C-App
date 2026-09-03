@@ -39,6 +39,14 @@ namespace micro_c_app_maui.ViewModels
 
             OnProductFound = new Command<Item>((item) =>
             {
+                // Every other command in this class null-guards its BuildComponent/Item parameter
+                // (IncreaseQuantity, DecreaseQuantity, RemoveItem, EditMessage) - this one didn't,
+                // even though it's a public command a scan/search failure could invoke with null.
+                if (item == null)
+                {
+                    return;
+                }
+
                 var comp = new BuildComponent { Item = item, Type = item.ComponentType };
                 comp.PropertyChanged += (sender, args) => UpdateProperties();
                 Items.Add(comp);

@@ -66,38 +66,56 @@ namespace micro_c_app_maui.ViewModels
                 {
                     vm.Title = comp.Type.ToString();
                     vm.ParseResults(results);
+                    // The results list has no debounce (SelectionMode="None" + a per-row
+                    // TapGestureRecognizer that fires on every tap), so a fast double-tap on a result
+                    // fires ItemSelected twice - without this guard, two concurrent Item.FromUrl
+                    // fetches would each race to call PopAsync(), and the second pop (on a page the
+                    // first already popped) throws.
+                    var itemSelectionInFlight = false;
                     vm.ItemSelected += async (selected) =>
                     {
-                        Item full;
+                        if (itemSelectionInFlight)
+                        {
+                            return;
+                        }
+                        itemSelectionInFlight = true;
                         try
                         {
-                            full = await Item.FromUrl(selected.URL, SettingsPage.StoreID());
-                        }
-                        catch
-                        {
-                            if (Shell.Current != null)
+                            Item full;
+                            try
                             {
-                                await Shell.Current.DisplayAlert("Error", "Failed to load product - check your connection and try again.", "Ok");
+                                full = await Item.FromUrl(selected.URL, SettingsPage.StoreID());
                             }
-                            return;
-                        }
-
-                        // Item.FromUrl doesn't throw on a non-200 response - it returns a NotFound
-                        // placeholder (Price 0, SKU "000000") instead. Without this check, a transient
-                        // failure while picking a component silently filled the build slot with that
-                        // placeholder and contributed $0 to Subtotal/TaxedTotal with no error shown.
-                        if (full.NotFound)
-                        {
-                            if (Shell.Current != null)
+                            catch
                             {
-                                await Shell.Current.DisplayAlert("Error", "Failed to load product - check your connection and try again.", "Ok");
+                                if (Shell.Current != null)
+                                {
+                                    await Shell.Current.DisplayAlert("Error", "Failed to load product - check your connection and try again.", "Ok");
+                                }
+                                return;
                             }
-                            return;
-                        }
 
-                        comp.Item = full;
-                        UpdateProperties();
-                        await Shell.Current.Navigation.PopAsync();
+                            // Item.FromUrl doesn't throw on a non-200 response - it returns a NotFound
+                            // placeholder (Price 0, SKU "000000") instead. Without this check, a transient
+                            // failure while picking a component silently filled the build slot with that
+                            // placeholder and contributed $0 to Subtotal/TaxedTotal with no error shown.
+                            if (full.NotFound)
+                            {
+                                if (Shell.Current != null)
+                                {
+                                    await Shell.Current.DisplayAlert("Error", "Failed to load product - check your connection and try again.", "Ok");
+                                }
+                                return;
+                            }
+
+                            comp.Item = full;
+                            UpdateProperties();
+                            await Shell.Current.Navigation.PopAsync();
+                        }
+                        finally
+                        {
+                            itemSelectionInFlight = false;
+                        }
                     };
                 }
 
@@ -154,7 +172,19 @@ namespace micro_c_app_maui.ViewModels
                 }
             }
 
-            SavedBuild.Save(name, filled);
+            try
+            {
+                SavedBuild.Save(name, filled);
+            }
+            catch
+            {
+                // SavedBuild.Save rethrows on I/O failure (full disk, locked file, permissions) -
+                // every other risky call in this class (Search.LoadQuery, Item.FromUrl) is already
+                // guarded the same way instead of letting the exception crash the app.
+                await Shell.Current.DisplayAlert("Error", "Failed to save the build - check available storage and try again.", "Ok");
+                return;
+            }
+
             BuildName = name;
             await Shell.Current.DisplayAlert("Save Build", $"Saved as \"{name}\".", "Ok");
         }
@@ -231,10 +261,14 @@ namespace micro_c_app_maui.ViewModels
             }
             else
             {
+                // Insert(index, ...) puts the new component BEFORE the last same-type component
+                // rather than after it - loading a saved build with multiple items of one type (e.g.
+                // 3 RAM sticks) came back reordered (the first-added one ends up last) instead of
+                // preserving the order they were originally added in.
                 var index = Components.ToList().FindLastIndex(c => c.Type == component.Type);
                 if (index >= 0)
                 {
-                    Components.Insert(index, component);
+                    Components.Insert(index + 1, component);
                 }
                 else
                 {
