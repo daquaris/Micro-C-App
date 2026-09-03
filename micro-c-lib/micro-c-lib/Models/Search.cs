@@ -186,7 +186,17 @@ namespace MicroCLib.Models
                 shortMatches = Regex.Matches(body, "<a id=\"hypProduct_\\d+\" class=\"image2 productClickItemV2\"([^>]*)>(.*?)</a>", RegexOptions.Singleline, RegexTimeout);
                 var stockMatches = Regex.Matches(body, "<div class=\"stock\">(.+?)<\\/div>", RegexOptions.Singleline, RegexTimeout);
                 var skuMatches = Regex.Matches(body, "<p class=\"sku\">SKU: (\\d{6})</p>", RegexOptions.None, RegexTimeout);
-                var clearanceMatches = Regex.Matches(body, "\"clearance\".*?<\\/div>", RegexOptions.Singleline, RegexTimeout);
+                //
+                // Anchored on class="clearance"> rather than the bare string "clearance": the search
+                // page's header category dropdown carries data-eventlabel="clearance" nine times
+                // before the product grid even starts, and those junk matches shifted the whole
+                // collection - ParseItems pairs clearanceMatches[i] with shortMatches[i] by index, so
+                // every product was reading some other product's clearance block (or nav markup).
+                // Verified against a live 96-result page: this yields exactly 96 blocks, one per
+                // product anchor (empty for products with no open-box listing), which is what the
+                // by-index pairing needs. The stock/SKU collections were already 1:1 at 96 each.
+                //
+                var clearanceMatches = Regex.Matches(body, "class=\"clearance\">.*?<\\/div>", RegexOptions.Singleline, RegexTimeout);
                 var newItems = new List<Item>();
 
                 //
@@ -273,13 +283,21 @@ namespace MicroCLib.Models
 
                 var clearanceBody = i < clearanceMatches.Count ? clearanceMatches[i].Value : "";
                 var m_clearanceQty = Regex.Match(clearanceBody, "clearance\">[^\\<\\>]*?(\\d+)", RegexOptions.Singleline);
-                var m_clearancePrice = Regex.Match(clearanceBody, "clearance\">.*?<span>\\$([\\d.]+)", RegexOptions.Singleline);
+                //
+                // The price sits inside a nested <strong> ("2 open box from <span><strong>$2,159.96
+                // </strong></span>"), so the old "<span>\$" - which required the dollar sign to
+                // follow <span> immediately - never matched and no search result ever came back with
+                // clearance data at all. Matching on the "$" itself covers either shape, and the
+                // digit class has to allow the thousands separator or a $2,159.96 open-box listing
+                // parses as $2.00.
+                //
+                var m_clearancePrice = Regex.Match(clearanceBody, "clearance\">.*?\\$([\\d,.]+)", RegexOptions.Singleline);
                 int clearanceQty = 0;
                 float clearancePrice = 0f;
                 if(m_clearanceQty.Success && m_clearancePrice.Success)
                 {
                     int.TryParse(m_clearanceQty.Groups[1].Value, out clearanceQty);
-                    float.TryParse(m_clearancePrice.Groups[1].Value, out clearancePrice);
+                    float.TryParse(m_clearancePrice.Groups[1].Value.Replace(",", ""), out clearancePrice);
                 }
 
                 var clearanceInfo = new List<ClearanceInfo>();

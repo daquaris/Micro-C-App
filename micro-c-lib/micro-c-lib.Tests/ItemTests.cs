@@ -75,7 +75,13 @@ namespace MicroCLib.Tests
         [TestMethod("Item has original price")]
         public void FromUrlHasOriginalPrice()
         {
-            Assert.IsTrue(item.OriginalPrice > 0f);
+            // The fixture product is on sale: $29.99 struck through, "Save $20.00", $9.99 now.
+            // Asserting only "> 0" passed vacuously even when parsing failed outright, because
+            // ParseOriginalPrice falls back to the current price - which is how the sale markup
+            // change went unnoticed and left OnSale permanently false. Assert the sale itself.
+            Assert.AreEqual(29.99f, item.OriginalPrice, 0.001f);
+            Assert.IsTrue(item.OnSale);
+            Assert.AreEqual(-20.00f, item.Discount, 0.001f);
         }
 
         [TestCategory("FromUrl")]
@@ -222,8 +228,10 @@ namespace MicroCLib.Tests
         [TestMethod("Regex Original Price")]
         public void RegexOriginalPrice()
         {
+            // See FromUrlHasOriginalPrice - "> 0" can't distinguish a real parse from the
+            // fall-back-to-current-price path, so pin the actual struck-through value.
             var price = Item.ParseOriginalPrice(body, item);
-            Assert.IsTrue(price > 0f);
+            Assert.AreEqual(29.99f, price, 0.001f);
         }
 
         [TestCategory("Regex")]

@@ -169,17 +169,29 @@ namespace MicroCLib.Models
 
         public static float ParseOriginalPrice(string body, Item item)
         {
-            var regexes = new Regex[] { GetOriginalPrice, GetOriginalPriceAlt };
-            foreach (var reg in regexes)
+            var regexes = new Regex[] { GetOriginalPriceStrike, GetOriginalPrice, GetOriginalPriceAlt };
+            try
             {
-                var match = reg.Match(body);
-                if (match.Success)
+                foreach (var reg in regexes)
                 {
-                    if (float.TryParse(match.Groups[1].Value, out float price))
+                    var match = reg.Match(body);
+                    if (match.Success)
                     {
-                        return price;
+                        // Prices over $999 render with a thousands separator ("$1,299.99"), which
+                        // float.TryParse rejects by default (NumberStyles.Float has no AllowThousands).
+                        if (float.TryParse(match.Groups[1].Value.Replace(",", ""), out float price))
+                        {
+                            return price;
+                        }
                     }
                 }
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                // Same reasoning as ParsePlans: GetOriginalPriceStrike's lazy scan is bounded by
+                // RegexTimeout, but a markup change that leaves its anchor present without a
+                // closing </strike> shouldn't fail the whole product lookup - degrade to "no sale
+                // info" (OriginalPrice == Price) the way this method already does for no match.
             }
 
             return item.price;
@@ -412,6 +424,16 @@ namespace MicroCLib.Models
         private static readonly Regex GetSpecs = new Regex("<div class=\"spec-body\"><div(?: class=)?[a-zA-Z\"=]*?>(.*?)(.*?)</div>.?<div(?: class=)?[a-zA-Z\"=]*?>(.*?)</div", RegexOptions.Singleline, RegexTimeout);
         private static readonly Regex GetPrice = new Regex("'productPrice':'(.*?)',", RegexOptions.None, RegexTimeout);
         private static readonly Regex GetURL = new Regex("'pageUrl':'(.*?)',", RegexOptions.None, RegexTimeout);
+        // A sale now renders as: <div class="standardDiscount"><strike><span class="sr-only">Original
+        // price </span>$29.99</strike>...<span class="...savings">Save $20.00</span></div>. Neither
+        // pattern below finds the original price in that: GetOriginalPrice expects "savings"><span>$
+        // (the savings span now leads with the literal word "Save", not a nested span), and
+        // GetOriginalPriceAlt's id='pricing' content is the *current* price, so it returns the same
+        // value as the item.Price fallback. Between them, ParseOriginalPrice always returned Price -
+        // OnSale was permanently false and Discount permanently $0, so a sale never showed as one.
+        // Anchoring on the standardDiscount container (rather than a bare <strike>) keeps this from
+        // picking up a struck-through price belonging to some other product elsewhere on the page.
+        private static readonly Regex GetOriginalPriceStrike = new Regex("standardDiscount\"[^<]*<strike>(?:.*?)\\$([\\d,]+\\.?\\d*)</strike>", RegexOptions.Singleline, RegexTimeout);
         private static readonly Regex GetOriginalPrice = new Regex("\"savings\"><span>\\$([\\d\\.]+)", RegexOptions.None, RegexTimeout);
         private static readonly Regex GetOriginalPriceAlt = new Regex("<span id='pricing' content=\"(.*?)\">", RegexOptions.None, RegexTimeout);
         private static readonly Regex GetStock = new Regex("<span class=\"inventoryCnt\">(.*?) <", RegexOptions.None, RegexTimeout);
