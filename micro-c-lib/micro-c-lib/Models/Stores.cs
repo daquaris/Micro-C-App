@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -59,34 +58,32 @@ namespace MicroCLib.Models
         {
             try
             {
-                using (var client = new HttpClient())
+                // Was creating and disposing its own HttpClient per call instead of reusing
+                // SharedHttpClient.Instance like Item.cs/Search.cs - the exact anti-pattern
+                // SharedHttpClient's own comment warns about, and it duplicated just the User-Agent
+                // header rather than the full header set every other microcenter.com request sends.
+                var body = await SharedHttpClient.Instance.GetStringAsync("https://www.microcenter.com/");
+                token?.ThrowIfCancellationRequested();
+
+                var matches = StoreDropdownEntry.Matches(body);
+                if (matches.Count == 0)
                 {
-                    client.Timeout = TimeSpan.FromSeconds(15);
-                    client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/112.0");
-
-                    var body = await client.GetStringAsync("https://www.microcenter.com/");
-                    token?.ThrowIfCancellationRequested();
-
-                    var matches = StoreDropdownEntry.Matches(body);
-                    if (matches.Count == 0)
-                    {
-                        return false;
-                    }
-
-                    var updated = new Dictionary<string, string>();
-                    foreach (Match m in matches)
-                    {
-                        var state = m.Groups[2].Value.Trim();
-                        var city = m.Groups[3].Value.Trim();
-                        updated[$"{state} - {city}"] = m.Groups[1].Value;
-                    }
-
-                    // The ship-to-store / web option doesn't appear in the physical-store dropdown.
-                    updated["Micro Center Web Store"] = "029";
-
-                    AllStores = updated;
-                    return true;
+                    return false;
                 }
+
+                var updated = new Dictionary<string, string>();
+                foreach (Match m in matches)
+                {
+                    var state = m.Groups[2].Value.Trim();
+                    var city = m.Groups[3].Value.Trim();
+                    updated[$"{state} - {city}"] = m.Groups[1].Value;
+                }
+
+                // The ship-to-store / web option doesn't appear in the physical-store dropdown.
+                updated["Micro Center Web Store"] = "029";
+
+                AllStores = updated;
+                return true;
             }
             catch (Exception e)
             {

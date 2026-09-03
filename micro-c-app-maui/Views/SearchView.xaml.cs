@@ -190,6 +190,15 @@ namespace micro_c_app_maui.Views
                     return;
                 }
 
+                // Item.FromUrl doesn't throw on a non-200 response - it returns a NotFound placeholder
+                // (see Item.NotFound), so a delisted product or a transient 5xx was silently surfacing
+                // as a "found" result reading "Product not found" instead of the error path below.
+                if (item.NotFound)
+                {
+                    Error?.Invoke($"Failed to find product with query {searchValue}");
+                    return;
+                }
+
                 App.SearchCache?.Add(item);
                 ProductFound?.Invoke(item);
                 return;
@@ -210,6 +219,14 @@ namespace micro_c_app_maui.Views
                     catch (Exception ex)
                     {
                         Error?.Invoke($"Search failed: {ex.Message}");
+                        return;
+                    }
+
+                    // See the single-result NotFound check above - the same placeholder trap applies
+                    // to picking an item off the results list.
+                    if (full.NotFound)
+                    {
+                        Error?.Invoke($"Failed to load {selected.Name}");
                         return;
                     }
 

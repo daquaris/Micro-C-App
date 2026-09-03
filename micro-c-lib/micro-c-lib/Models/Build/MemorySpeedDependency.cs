@@ -26,8 +26,13 @@ namespace MicroCLib.Models.Build
 
         private IEnumerable<string> ProcessSpeedString(string value)
         {
-            var matches = Regex.Matches(value, "(\\d+)");
-            return matches.OfType<Match>().Select(m => m.Groups[1].Value);
+            // (\d+) matched every digit run, including the DDR generation number - "DDR4-3200" and
+            // "DDR4-2133" both contain a bare "4", so Compatible's cross-product ("does any speed in
+            // A match any speed in B") reported them compatible on that shared "4" alone regardless of
+            // the actual 3200 vs 2133 mismatch. DDR speeds are always >= 3 digits (down to DDR-200);
+            // the generation number is always exactly 1, so requiring 3+ digits excludes it.
+            var matches = Regex.Matches(value, "\\d{3,}");
+            return matches.OfType<Match>().Select(m => m.Value);
         }
     }
 }

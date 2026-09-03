@@ -1,5 +1,4 @@
 ﻿using Newtonsoft.Json;
-using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -12,19 +11,22 @@ namespace MicroCLib.Models
         [JsonProperty(PropertyName = "item")]
         public string Url { get; set; }
         private string filter;
+        // Distinct from "filter is null/empty" - without this, a Url that's null or just doesn't
+        // match FilterRegex left `filter` unset forever, so every single Filter access (this is read
+        // per-category in a loop - see Item.GetPrimaryType) re-ran the regex from scratch instead of
+        // caching the "no match" result once.
+        private bool filterComputed;
         public string Filter
         {
             get
             {
-                if (string.IsNullOrWhiteSpace(filter))
+                if (!filterComputed)
                 {
-                    try
+                    filterComputed = true;
+                    if (!string.IsNullOrWhiteSpace(Url))
                     {
-                        filter = Regex.Match(Url, FilterRegex).Groups[1].Value;
-                    }
-                    catch (Exception e)
-                    {
-
+                        var match = Regex.Match(Url, FilterRegex);
+                        filter = match.Success ? match.Groups[1].Value : null;
                     }
                 }
 

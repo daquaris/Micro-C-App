@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -44,10 +45,11 @@ namespace MicroCLib.Models
 
             while(result.Items.Count < result.TotalResults)
             {
-                if(token != null && token.Value.IsCancellationRequested)
-                {
-                    return new SearchResults() { };
-                }
+                // Was returning a plain empty SearchResults on cancellation - indistinguishable from a
+                // genuine zero-match query, unlike the ThrowIfCancellationRequested() at the bottom of
+                // this same method, which callers can tell apart from "no results" via
+                // OperationCanceledException. Throw here too instead of swallowing the cancellation.
+                token?.ThrowIfCancellationRequested();
 
                 var addResult = await LoadQuery(searchQuery, storeID, categoryFilter, orderBy, page, token);
                 if(addResult != null && addResult.Items.Count == 0)
@@ -117,7 +119,12 @@ namespace MicroCLib.Models
             // TotalResults alone can't tell a real SKU/UPC match from filler. Confirmed by scanning a
             // barcode MicroCenter doesn't carry at all (a grocery item) and getting back an unrelated
             // in-catalog product. Only trust this result if it actually matches what was searched.
-            if (item == null)
+            //
+            // Item.FromUrl never actually returns null - a non-200 response comes back as a
+            // NotFound placeholder Item whose SKU is "000000" (see Item.NotFound). Without this check,
+            // searching the literal string "000000" would pass the SKU comparison below against that
+            // placeholder and hand back a fake "found" result for a product page that failed to load.
+            if (item == null || item.NotFound)
             {
                 return null;
             }
@@ -211,10 +218,14 @@ namespace MicroCLib.Models
                 // filler-query fallback below. (LoadAll no longer trusts a too-low TotalResults
                 // blindly either way, but this keeps the value itself accurate for anything that
                 // reads TotalResults directly - the tests, a "Showing X of Y" UI, etc.)
-                var match = Regex.Match(body, "of\\s*<[^>]+>\\s*(\\d+)\\s*</[^>]+>", RegexOptions.None, RegexTimeout);
+                // A count over 999 renders with a thousands separator ("of 1,234 results"), which
+                // \d+ can't match past the comma - the summary regex simply failed to match at all
+                // for any popular category, falling through to the filler-query heuristic below and
+                // under-reporting shortMatches.Count as the total instead of the real count.
+                var match = Regex.Match(body, "of\\s*<[^>]+>\\s*([\\d,]+)\\s*</[^>]+>", RegexOptions.None, RegexTimeout);
                 if (match.Success)
                 {
-                    if (int.TryParse(match.Groups[1].Value, out int totalResults))
+                    if (int.TryParse(match.Groups[1].Value.Replace(",", ""), NumberStyles.Integer, CultureInfo.InvariantCulture, out int totalResults))
                     {
                         result.TotalResults = totalResults;
                     }
@@ -296,8 +307,8 @@ namespace MicroCLib.Models
                 float clearancePrice = 0f;
                 if(m_clearanceQty.Success && m_clearancePrice.Success)
                 {
-                    int.TryParse(m_clearanceQty.Groups[1].Value, out clearanceQty);
-                    float.TryParse(m_clearancePrice.Groups[1].Value.Replace(",", ""), out clearancePrice);
+                    int.TryParse(m_clearanceQty.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out clearanceQty);
+                    float.TryParse(m_clearancePrice.Groups[1].Value.Replace(",", ""), NumberStyles.Float, CultureInfo.InvariantCulture, out clearancePrice);
                 }
 
                 var clearanceInfo = new List<ClearanceInfo>();
@@ -308,7 +319,7 @@ namespace MicroCLib.Models
 
                 var srcMatch = Regex.Match(inner, "src=\"(.*?)\"");
 
-                float.TryParse(GetAttr("data-price"), out float price);
+                float.TryParse(GetAttr("data-price"), NumberStyles.Float, CultureInfo.InvariantCulture, out float price);
                 var item = new Item()
                 {
                     Name = Item.HttpDecode(GetAttr("data-name")),

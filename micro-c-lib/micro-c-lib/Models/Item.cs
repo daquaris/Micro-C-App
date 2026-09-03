@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Dynamic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -26,9 +27,18 @@ namespace MicroCLib.Models
         public string Stock { get; set; } = "";
         public float Price { get => price; set => SetProperty(ref price, value); }
         public float OriginalPrice { get; set; } = 0f;
-        public float Discount => Price - OriginalPrice;
+        // Amount saved off OriginalPrice - was Price - OriginalPrice, which is negative for every
+        // sale (Price < OriginalPrice) rather than the positive savings the name implies.
+        public float Discount => OriginalPrice - Price;
         public bool OnSale => Price != OriginalPrice;
         public Dictionary<string, string> Specs { get; set; }
+
+        // FromUrl returns this placeholder (see below) rather than throwing on a non-200 response, so
+        // a delisted product, a bot block, or a transient 5xx all come back as a normal-looking Item
+        // instead of null or an exception. Callers that skip this check silently treat "not found" as
+        // a real result - see Reminder.CheckStock's fix for the same trap. "response" is the one key
+        // ParseSpecs (a real product page's spec table) would never produce.
+        public bool NotFound => Specs != null && Specs.ContainsKey("response");
 
         private int quantity = 1;
         private float price = 0f;
@@ -158,7 +168,7 @@ namespace MicroCLib.Models
             var match = GetPrice.Match(body);
             if (match.Success)
             {
-                if (float.TryParse(match.Groups[1].Value, out float price))
+                if (float.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out float price))
                 {
                     return price;
                 }
@@ -179,7 +189,11 @@ namespace MicroCLib.Models
                     {
                         // Prices over $999 render with a thousands separator ("$1,299.99"), which
                         // float.TryParse rejects by default (NumberStyles.Float has no AllowThousands).
-                        if (float.TryParse(match.Groups[1].Value.Replace(",", ""), out float price))
+                        // InvariantCulture keeps "." as the decimal point regardless of the device's
+                        // locale - the plain float.TryParse(string) overload used to parse against
+                        // CurrentCulture, so a device set to a comma-decimal locale would fail to
+                        // parse this US-formatted markup at all and silently fall back to Price.
+                        if (float.TryParse(match.Groups[1].Value.Replace(",", ""), NumberStyles.Float, CultureInfo.InvariantCulture, out float price))
                         {
                             return price;
                         }
@@ -291,7 +305,7 @@ namespace MicroCLib.Models
                 var matches = GetPlans.Matches(body);
                 foreach (Match m in matches)
                 {
-                    if (float.TryParse(m.Groups[2].Value, out float price))
+                    if (float.TryParse(m.Groups[2].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out float price))
                     {
                         result.Add(new Plan()
                         {
@@ -386,7 +400,7 @@ namespace MicroCLib.Models
                 }
 
                 var price = GetClearancePrice.Match(text);
-                if (price.Success && float.TryParse(price.Groups[1].Value, out float f))
+                if (price.Success && float.TryParse(price.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out float f))
                 {
                     info.Price = f;
                 }

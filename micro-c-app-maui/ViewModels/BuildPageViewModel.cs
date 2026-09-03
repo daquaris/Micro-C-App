@@ -82,6 +82,19 @@ namespace micro_c_app_maui.ViewModels
                             return;
                         }
 
+                        // Item.FromUrl doesn't throw on a non-200 response - it returns a NotFound
+                        // placeholder (Price 0, SKU "000000") instead. Without this check, a transient
+                        // failure while picking a component silently filled the build slot with that
+                        // placeholder and contributed $0 to Subtotal/TaxedTotal with no error shown.
+                        if (full.NotFound)
+                        {
+                            if (Shell.Current != null)
+                            {
+                                await Shell.Current.DisplayAlert("Error", "Failed to load product - check your connection and try again.", "Ok");
+                            }
+                            return;
+                        }
+
                         comp.Item = full;
                         UpdateProperties();
                         await Shell.Current.Navigation.PopAsync();

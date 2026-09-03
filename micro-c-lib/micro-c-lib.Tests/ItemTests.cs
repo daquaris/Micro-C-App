@@ -81,7 +81,8 @@ namespace MicroCLib.Tests
             // change went unnoticed and left OnSale permanently false. Assert the sale itself.
             Assert.AreEqual(29.99f, item.OriginalPrice, 0.001f);
             Assert.IsTrue(item.OnSale);
-            Assert.AreEqual(-20.00f, item.Discount, 0.001f);
+            // Discount is OriginalPrice - Price (the amount saved), not the other way round.
+            Assert.AreEqual(20.00f, item.Discount, 0.001f);
         }
 
         [TestCategory("FromUrl")]

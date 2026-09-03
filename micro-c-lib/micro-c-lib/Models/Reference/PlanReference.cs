@@ -76,7 +76,14 @@ namespace MicroCLib.Models.Reference
 
         public static PlanReference Get(PlanType type, float price)
         {
-            return AllPlans.FirstOrDefault(p => p.Type == type && p.MinPrice <= price && p.MaxPrice >= price);
+            // Every Apple_Plans_*/AppleCare_* entry below uses MinPrice = MaxPrice = 0 to mean "flat
+            // fee regardless of device price" (e.g. AppleCare for any 13" MacBook is $269.99 whether
+            // the specific configuration is $999 or $1999). A plain range check treats that as "only
+            // matches price == 0" instead, so none of those ~30 plans could ever be returned for a
+            // real (non-zero) device price. No tiered plan uses (0, 0) as an actual boundary - every
+            // real tier's MaxPrice is > 0 - so this can't accidentally match one of those instead.
+            return AllPlans.FirstOrDefault(p => p.Type == type &&
+                ((p.MinPrice == 0f && p.MaxPrice == 0f) || (p.MinPrice <= price && p.MaxPrice >= price)));
         }
 
         static PlanReference()

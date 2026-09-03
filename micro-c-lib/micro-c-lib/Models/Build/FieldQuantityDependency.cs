@@ -71,7 +71,22 @@ namespace MicroCLib.Models
 
         public override List<DependencyResult> HasErrors(List<Item> items)
         {
-            var containerItems = items.Where(i => i.ComponentType == containerType && GetValue(i, containerFieldName).HasValue);
+            // Was filtering on GetValue(i, containerFieldName).HasValue unconditionally, even when
+            // containerFieldName is null (e.g. the "Has OS" dependency, which omits both field names
+            // and just compares item counts) - GetValue(item, null) always returns null, so
+            // containerItems was always empty and HasErrors returned early with zero errors on every
+            // call, silently disabling the whole dependency. subItems below already branches on
+            // subTypeFieldName being blank for the same reason; this mirrors that.
+            IEnumerable<Item> containerItems;
+            if (string.IsNullOrWhiteSpace(containerFieldName))
+            {
+                containerItems = items.Where(i => i.ComponentType == containerType);
+            }
+            else
+            {
+                containerItems = items.Where(i => i.ComponentType == containerType && GetValue(i, containerFieldName).HasValue);
+            }
+
             if (containerItems.Count() == 0)
             {
                 return new List<DependencyResult>();
