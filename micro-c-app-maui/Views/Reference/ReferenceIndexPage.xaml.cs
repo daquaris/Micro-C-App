@@ -38,6 +38,14 @@ namespace micro_c_app_maui.Views.Reference
 
         public static async Task NavigateTo(string path)
         {
+            // The only current caller (ReferenceWebViewPage's reference= link handler) can't pass
+            // null, but this is a public entry point driven by markdown-authored link text - a
+            // malformed link, or any future caller, shouldn't NRE on path.Split.
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return;
+            }
+
             var parts = path.Split('/').Skip(1);
             var node = Tree.GetNode(parts);
             await NavigateTo(node);

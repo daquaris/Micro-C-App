@@ -63,6 +63,20 @@ blockquote {{ border-left:3px solid gray; margin:8px 0; padding:4px 12px; opacit
 
         private async void WebView_Navigating(object? sender, WebNavigatingEventArgs e)
         {
+            // Must run before the custom-link regex below: (search|reference|plan)=(.*)$ is
+            // unanchored at the start, so a genuine external link that merely *ends* with a matching
+            // query string (e.g. https://microcenter.com/category?search=monitors) would false-match
+            // and get cancelled/rerouted through internal Shell navigation instead of opening in the
+            // browser. The classic app's equivalent regex avoided this by requiring a "file:" scheme
+            // prefix (its internal links are file:// URLs); this MAUI port's internal links render as
+            // bare "search=X" hrefs with no scheme, so ordering is what keeps the two apart here.
+            if (e.Url.StartsWith("http://") || e.Url.StartsWith("https://"))
+            {
+                e.Cancel = true;
+                await Launcher.OpenAsync(e.Url);
+                return;
+            }
+
             var match = Regex.Match(e.Url, "(search|reference|plan)=(.*)$");
             if (match.Success)
             {
@@ -86,13 +100,6 @@ blockquote {{ border-left:3px solid gray; margin:8px 0; padding:4px 12px; opacit
                         Debug.WriteLine($"Reference plan link not supported yet: {argument}");
                         break;
                 }
-                return;
-            }
-
-            if (e.Url.StartsWith("http://") || e.Url.StartsWith("https://"))
-            {
-                e.Cancel = true;
-                await Launcher.OpenAsync(e.Url);
             }
         }
     }

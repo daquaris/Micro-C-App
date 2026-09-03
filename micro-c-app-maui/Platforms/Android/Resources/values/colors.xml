@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#512BD4</color>
-    <color name="colorPrimaryDark">#2B0B98</color>
-    <color name="colorAccent">#2B0B98</color>
+    <!-- Was the unused default MAUI template purple. The generated splash theme already uses the
+         app's teal (MauiSplashScreen Color="#004f4f" in the csproj) via its own
+         maui_splash_color resource, so this doesn't affect the cold-start splash - but
+         Maui.MainTheme.Base wires these into colorPrimary/colorAccent, which Material Components
+         falls back to for native chrome the XAML layer doesn't explicitly restyle (the
+         text-selection action-mode toolbar, checkbox tint, etc.), so it was showing purple there. -->
+    <color name="colorPrimary">#004f4f</color>
+    <color name="colorPrimaryDark">#004f4f</color>
+    <color name="colorAccent">#004f4f</color>
 </resources>
