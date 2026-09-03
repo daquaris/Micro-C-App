@@ -42,6 +42,28 @@ namespace micro_c_app_maui.ViewModels
             CheckAll = new Command(async () => await DoCheckAll());
         }
 
+        // Reminders is a snapshot copy of the static Reminder.AllReminders list, but reminders are
+        // also added from the Search tab (Reminder.Add -> AllReminders). Shell caches this page and
+        // its view model for the whole session, so once this tab had been opened, anything added
+        // afterwards went to disk but never showed up in the list until the app was restarted.
+        // Re-syncing on appear covers that; the SequenceEqual guard keeps an unchanged list from
+        // being torn down and rebuilt (and the CollectionView scrolled back to the top) on every
+        // tab switch. Reference equality is what's wanted here - these are the same objects.
+        public void Refresh()
+        {
+            var all = Reminder.LoadAll();
+            if (Reminders.SequenceEqual(all))
+            {
+                return;
+            }
+
+            Reminders.Clear();
+            foreach (var reminder in all)
+            {
+                Reminders.Add(reminder);
+            }
+        }
+
         private async System.Threading.Tasks.Task DoCheckAll()
         {
             if (Shell.Current == null)

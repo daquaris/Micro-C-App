@@ -56,7 +56,19 @@ namespace micro_c_app_maui.Models
         public async Task<bool> CheckStock()
         {
             var item = await Item.FromUrl(URL, SettingsPage.StoreID());
-            return item?.Stock is not null && item.Stock != "Sold Out" && item.Stock != "0";
+
+            // Item.FromUrl doesn't throw on a non-200 response - it returns a "Product not found"
+            // placeholder whose Stock is left at "" (a delisted product, a bot block, a transient
+            // 5xx all land here). An empty string is neither "Sold Out" nor "0", so the old check
+            // reported it as back in stock and permanently set Notified, meaning the real restock
+            // was then never reported. A page that parses but has no stock figure gives "0".
+            var stock = item?.Stock;
+            if (string.IsNullOrWhiteSpace(stock))
+            {
+                return false;
+            }
+
+            return stock != "Sold Out" && stock != "0";
         }
 
         public static void Add(Reminder reminder)
