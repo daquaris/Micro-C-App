@@ -15,6 +15,11 @@ namespace micro_c_app_maui.Views
         // clobber whatever item the user was actually looking at.
         private string? lastAppliedSearch;
 
+        // Guards AddReminderCommand against a fast double-tap - unlike SearchView's entry points,
+        // nothing here disabled the button or debounced re-entry, so two taps before the first
+        // PushAsync completes pushed two identical ReminderEditPage instances onto the nav stack.
+        private bool isBusy;
+
         public SearchPage()
         {
             SearchCategoryCommand = new Command<ComponentTypeInfo>(async (category) =>
@@ -27,7 +32,13 @@ namespace micro_c_app_maui.Views
 
             AddReminderCommand = new Command(async () =>
             {
-                if (BindingContext is SearchViewModel vm && vm.Item != null && Shell.Current != null)
+                if (isBusy || !(BindingContext is SearchViewModel vm) || vm.Item == null || Shell.Current == null)
+                {
+                    return;
+                }
+
+                isBusy = true;
+                try
                 {
                     var reminderVm = new ReminderEditPageViewModel
                     {
@@ -36,6 +47,10 @@ namespace micro_c_app_maui.Views
                     };
                     var page = new ReminderEditPage { BindingContext = reminderVm };
                     await Shell.Current.Navigation.PushAsync(page);
+                }
+                finally
+                {
+                    isBusy = false;
                 }
             });
 

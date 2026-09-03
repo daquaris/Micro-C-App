@@ -56,6 +56,13 @@ namespace micro_c_app_maui.Views
             base.OnAppearing();
             scanner.IsDetecting = true;
 
+            // MAUI's page lifecycle can fire OnAppearing more than once in a row without an
+            // intervening OnDisappearing (rapid modal/tab transitions) - without stopping a prior
+            // timer first, overwriting autoFocusTimer below would orphan it. The dispatcher keeps a
+            // running IDispatcherTimer alive and ticking regardless of whether anything still
+            // references it, so it would keep calling scanner.AutoFocus() indefinitely.
+            autoFocusTimer?.Stop();
+
             // AutoFocus() is a no-op until the camera is actually bound (CanFocus() checks for a
             // live camera + sized preview), so starting immediately is harmless - it just won't do
             // anything on the first tick or two.
