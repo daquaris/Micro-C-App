@@ -18,11 +18,12 @@ namespace micro_c_app_maui
                 return;
             }
 
-            if (values.Length % 2 != 0)
+            if (values == null || values.Length % 2 != 0)
             {
-                // A caller passed a name with no matching value (or an odd trailing one). Silently
-                // truncating and sending the rest used to hide the bug in production telemetry -
-                // drop the call instead so it's obviously missing rather than quietly wrong.
+                // A caller passed a name with no matching value (or an odd trailing one), or an
+                // explicit null for the params array. Silently truncating and sending the rest used
+                // to hide the bug in production telemetry - drop the call instead so it's obviously
+                // missing rather than quietly wrong (or, for null, a crash).
                 System.Diagnostics.Debug.WriteLine("Error: AnalyticsService.Track parameter 'values' must be an even total!");
                 return;
             }
@@ -48,7 +49,7 @@ namespace micro_c_app_maui
                 return;
             }
 
-            if (values.Length % 2 != 0)
+            if (values != null && values.Length % 2 != 0)
             {
                 // Unlike Track (breadcrumb-only), the exception itself is the point here - drop the
                 // trailing unmatched value but still capture the exception rather than losing the
@@ -58,6 +59,11 @@ namespace micro_c_app_maui
 
             SentrySdk.CaptureException(e, scope =>
             {
+                if (values == null)
+                {
+                    return;
+                }
+
                 for (int i = 0; i < values.Length - 1; i += 2)
                 {
                     scope.SetExtra(values[i], values[i + 1]);

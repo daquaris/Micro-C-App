@@ -31,14 +31,24 @@ namespace micro_c_app_maui
             return Items.Select(i => i.item).FirstOrDefault(i => i.SKU == search || (i.Specs?.ContainsKey("UPC") == true && i.Specs["UPC"] == search))?.CloneAndResetQuantity();
         }
 
+        // Purge() only runs from Get(), on a TTL basis - a long session that searches many distinct
+        // SKUs without ever calling Get() on a stale one (e.g. cataloging inventory by hand) grows
+        // Items unbounded until the hour-long TTL happens to clear it. Cap it independently of time.
+        private const int MAX_ITEMS = 100;
+
         public void Add(Item item)
         {
-            if (string.IsNullOrWhiteSpace(item.SKU))
+            if (item == null || string.IsNullOrWhiteSpace(item.SKU))
             {
                 return;
             }
             Items.RemoveAll(i => i.item.SKU == item.SKU);
             Items.Add((DateTime.UtcNow, item));
+
+            if (Items.Count > MAX_ITEMS)
+            {
+                Items.RemoveRange(0, Items.Count - MAX_ITEMS);
+            }
         }
     }
 }

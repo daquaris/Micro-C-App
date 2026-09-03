@@ -11,7 +11,10 @@ public partial class App : Application
 	{
 		InitializeComponent();
 
-		SettingsPage.Updated += SettingsUpdated;
+		// StoreIDChanged, not the generic Updated - Updated fires for every preference change
+		// (theme, vibrate, analytics opt-in, quicksearch categories, the hint-dismiss counter), so
+		// tracking on it logged a "Store ID" event for all of those, not just an actual store change.
+		SettingsPage.StoreIDChanged += SettingsUpdated;
 	}
 
 	protected override Window CreateWindow(IActivationState? activationState)

@@ -54,7 +54,7 @@ namespace micro_c_app_maui
             }
         }
 
-        public static void StoreID(string id) { Preferences.Set(PREF_SELECTED_STORE, id); SendSettingsUpdated(); }
+        public static void StoreID(string id) { Preferences.Set(PREF_SELECTED_STORE, id); StoreIDChanged?.Invoke(); SendSettingsUpdated(); }
         public static void Theme(AppTheme theme) { Preferences.Set(PREF_THEME, (int)theme); SendSettingsUpdated(); }
         public static void Vibrate(bool vibrate) { Preferences.Set(PREF_VIBRATE, vibrate); SendSettingsUpdated(); }
         public static void AnalyticsEnabled(bool value) { Preferences.Set(PREF_ANALYTICS_ENABLED, value); SendSettingsUpdated(); }
@@ -72,6 +72,12 @@ namespace micro_c_app_maui
         // MessagingCenter was removed from MAUI (Xamarin.Forms legacy) - a plain static event covers
         // our one use case (notifying the app that a setting changed) without pulling in a messenger package.
         public static event Action? Updated;
+
+        // Separate from Updated, which fires for every preference (theme, vibrate, analytics opt-in,
+        // quicksearch categories, even the help-hint dismiss counter) - App.xaml.cs's analytics
+        // handler used to listen on Updated and log a "Store ID" event on every one of those, not
+        // just an actual store change.
+        public static event Action? StoreIDChanged;
 
         private static void SendSettingsUpdated()
         {
